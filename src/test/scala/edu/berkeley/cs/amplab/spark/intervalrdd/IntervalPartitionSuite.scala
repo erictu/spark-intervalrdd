@@ -23,14 +23,14 @@ import org.apache.spark.HashPartitioner
 
 
 import com.github.akmorrow13.intervaltree._
-
+import org.scalatest._
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite
 import org.scalatest.Matchers
 
 // TODO: include with SharedSparkContext
-abstract class IntervalRDDSuite extends FunSuite  {
+abstract class IntervalPartitionSuite extends FunSuite  {
 
   test("setting up environment") {
     assert(1 == 1)
