@@ -19,20 +19,44 @@ package edu.berkeley.cs.amplab.spark.intervalrdd
 
 import scala.reflect.{classTag, ClassTag}
 
+import org.apache.spark._
+import org.apache.spark.SparkContext._
+import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
+
 import edu.berkeley.cs.amplab.spark.intervalrdd._
 import com.github.akmorrow13.intervaltree._
 import org.apache.spark.Logging
 
-class IntervalPartition[K, S, V] 
-	(protected val map: IntervalTree[V]) {
 
-  def multiget(ks: Iterator[K]): Iterator[(K, V)] = {
-  	// get elements through the interval tree
+// K = sec key
+// V = data
+class IntervalPartition[K: ClassTag, V: ClassTag] 
+	(protected val iTree: IntervalTree[K, V]) {
+
+
+  def this() {
+    this(new IntervalTree[K, V]())
   }
 
-  def multiput[V](): IntervalPartition[K, S, V] = {
-  	  // add elements to interval tree map
+  protected def withMap
+      (map: IntervalTree[K, V]): IntervalPartition[K, V] = {
+    new IntervalPartition(map)
   }
 
+   // search by interval, return by (K=id, V=data)
+  def multiget(ks: Iterator[(Interval[Long], List[K])]) : Iterator[(Interval[Long], List[(K, V)])] = 
+   ks.map { k => (k._1, iTree.search(k._1, k._2))  }
+
+  // k = interval
+  // U = data: either a (S,V) tuple or List(S,V)
+  def multiput(
+      kvs: Iterator[(Interval[Long], (K, V))]): IntervalPartition[K, V] = {
+    val newTree = iTree.snapshot()
+    for (ku <- kvs) {
+      newTree.insert(ku._1, ku._2)
+    }
+    this.withMap(newTree)
+  }
 
 }
