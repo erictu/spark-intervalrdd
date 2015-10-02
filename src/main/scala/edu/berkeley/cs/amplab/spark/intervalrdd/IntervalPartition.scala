@@ -45,6 +45,10 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
   }
 
    // search by interval, return by (K=id, V=data)
+  def getAll(ks: Iterator[Interval[Long]]): Iterator[(Interval[Long], List[(K, V)])] = 
+   ks.map { k => (k, iTree.search(k))  }
+
+   // search by interval, return by (K=id, V=data)
   def multiget(ks: Iterator[(Interval[Long], List[K])]) : Iterator[(Interval[Long], List[(K, V)])] = 
    ks.map { k => (k._1, iTree.search(k._1, k._2))  }
 
