@@ -28,6 +28,8 @@ import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
+import scala.collection.mutable.ListBuffer
+
 import com.github.akmorrow13.intervaltree._
 
 
@@ -44,33 +46,33 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
   /** Gets the value corresponding to the specified request, if any. 
   * a request contains the chromosome, interval, and specified keys
   */
-  def get(chr: String, intl: Interval[Long], k: K): Option[V] = multiget(chr, intl, Array(k)).get(k)
+  def get(chr: String, intl: Interval[Long], k: K): Option[Map[K,V]] = multiget(chr, intl, Option(List(k)))
 
   // Gets values corresponding to a single interval over multiple ids
-  def get(chr: String, intl: Interval[Long]): Option[V] = multiget(chr, intl, None)
+  def get(chr: String, intl: Interval[Long]): Option[Map[K,V]] = multiget(chr, intl, None)
 
   /** Gets the values corresponding to the specified key, if any 
   * Assume that we're only getting data that exists (if it doesn't exist,
   * would have been handled by upper LazyMaterialization layer
   */
-  def multiget(chr: String, intl: Interval[Long], ks: Option[Array[K]]): Option(Map[K, V]) = {
+  def multiget(chr: String, intl: Interval[Long], ks: Option[List[K]]): Option[Map[K, V]] = {
     // check bookkeeping structure for partition number
-    var partitionNums: List = bookkeep.search(intl, chr)
+    var partitionNums: List[(String, Long)] = bookkeep.search(intl, chr)
     if (partitionNums.length == 0) {
       // return that it failed
       return None
     }
-    val results: Array[Array[(K,V)]] = context.runJob(partitionsRDD,
+    val results: List[List[(K,V)]] = context.runJob(partitionsRDD,
       (context: TaskContext, partIter: Iterator[IntervalPartition[K, V]]) => {
         if (partIter.hasNext && partitionNums.contains(context.partitionId)) { //if it's a partition that contains data we want
           val intPart = partIter.next()
           ks match {
-            case Some(ks) => partition.get(intl, ks)
-            case None     => partition.get(intl)
+            case Some(ks) => intPart.multiget(Iterator((intl, ks)))
+            case None     => intPart.multiget(Iterator((intl, ks))) // TODO
           }
         }
       }, partitions, allowLocal = true)
-    results.flatten.toMap
+    Option(results.flatten.toMap)
   }
 
   /**
@@ -97,13 +99,15 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
     //Do we need a new partitioner to hash by interval? what is it currently hashing by?
     val newData: RDD[(K,V)] = context.parallelize(kvs.toSeq).partitionBy(partitioner.get)
     // not sure if it goes to the correct partitions? Key should map to the same ones, but double check
-    var idxList: ListBuffer[Long] = new ListBuffer[Long]()
+    var partitionList: ListBuffer[Long] = new ListBuffer[Long]()
     val convertedPartitions: RDD[IntervalPartition[K,V]] = newData.mapPartitionsWithIndex(
       (idx, iter) => {
+        partitionList += idx
         Iterator(IntervalPartition(iter))
-        idxList += idx
       }, preservesPartitioning = true)
-    bookkeep.put(intl, idxList)
+    //TODO: How to get K, the keys?
+    // def insert(i: Interval[Long], r: List[(K, T)]): Boolean = {
+    bookkeep.insert(intl, partitionList.toList)
     val newRDD: RDD[IntervalPartition[K,V]] = partitionsRDD.zipPartitions(convertedPartitions, true)
     new IntervalRDD(newRDD)
   }
@@ -116,7 +120,7 @@ object IntervalRDD {
   /**
   * Constructs an updatable IntervalRDD from an RDD of a BDGFormat
   */
-  def apply[K: ClassTag, V: ClassTag](elems: RDD[V]) : IntervalRDD[K,V] = {
+  def apply[K: ClassTag, V: ClassTag](elems: RDD[(K,V)]) : IntervalRDD[K,V] = {
     //TODO: how to get K? It's just a tag
     val partitioned = 
       if (elems.partitioner.isDefined) elems

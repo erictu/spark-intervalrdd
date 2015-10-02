@@ -54,7 +54,7 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
   // k = interval
   // U = data: either a (S,V) tuple or List(S,V)
   def multiput(
-      kvs: Iterator[(Interval[Long], (K, V))]): IntervalPartition[K, V] = {
+      kvs: Iterator[(Interval[Long], List[(K, V)])]): IntervalPartition[K, V] = {
     val newTree = iTree.snapshot()
     for (ku <- kvs) {
       newTree.insert(ku._1, ku._2)
