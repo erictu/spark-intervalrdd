@@ -28,7 +28,6 @@ import edu.berkeley.cs.amplab.spark.intervalrdd._
 import com.github.akmorrow13.intervaltree._
 import org.apache.spark.Logging
 
-
 // K = sec key
 // V = data
 class IntervalPartition[K: ClassTag, V: ClassTag] 
