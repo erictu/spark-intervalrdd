@@ -32,8 +32,10 @@ import scala.collection.mutable.ListBuffer
 
 import com.github.akmorrow13.intervaltree._
 
-
-class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
+// K = interval
+// S = sec key
+// V = data
+abstract class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
     /** The underlying representation of the IndexedRDD as an RDD of partitions. */
     private val partitionsRDD: RDD[IntervalPartition[S, V]])
   extends RDD[(K, V)](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) {
@@ -45,37 +47,34 @@ class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
   /** Gets the value corresponding to the specified request, if any. 
   * a request contains the chromosome, interval, and specified keys
   */
-  def get(chr: String, intl: Interval[Long], k: K): Option[Map[K,V]] = multiget(chr, intl, Option(List(k)))
+
+  // TODO replace Interval Type with K
+  def get(chr: String, intl: Interval[Long], k: S): Option[Map[Interval[Long], List[(S, V)]]] = multiget(chr, intl, Option(List(k)))
 
   // Gets values corresponding to a single interval over multiple ids
-  def get(chr: String, intl: Interval[Long]): Option[Map[K,V]] = multiget(chr, intl, None)
+  def get(chr: String, intl: Interval[Long]): Option[Map[Interval[Long], List[(S, V)]]] = multiget(chr, intl, None)
 
   /** Gets the values corresponding to the specified key, if any 
   * Assume that we're only getting data that exists (if it doesn't exist,
   * would have been handled by upper LazyMaterialization layer
   */
-  def multiget(chr: String, intl: Interval[Long], ks: Option[List[K]]): Option[Map[K, V]] = {
-    // TODO: Instead of returning a map, return the combination of the data that we were able to fetch, 
-    // and also a list of intervals that we were not able to fetch
+  def multiget(chr: String, intl: Interval[Long], ks: Option[List[S]]): Option[Map[Interval[Long], List[(S, V)]]] = { 
+    val partitionNums: List[(String, Long)] = bookkeep.search(intl, chr) 
+    // TODO: remove toInt and build in
+    val partitions = partitionNums.map { k => k._2.toInt  }.toSeq
 
-    // TODO: make this get return an Iterator?
-
-
-    // check bookkeeping structure for partition number
-    var partitionNums: List[(String, Long)] = bookkeep.search(intl, chr)
-    if (partitionNums.length == 0) {
-      // return that it failed
-      return None
-    }
-    val results: List[List[(K,V)]] = context.runJob(partitionsRDD,
-      (context: TaskContext, partIter: Iterator[IntervalPartition[K, V]]) => { 
-        if (partIter.hasNext && partitionNums.contains(context.partitionId)) { //if it's a partition that contains data we want
+    // get data from parititons
+    val results: Array[Array[(Interval[Long], List[(S, V)])]] = context.runJob(partitionsRDD,
+      (context: TaskContext, partIter: Iterator[IntervalPartition[S, V]]) => { 
+       if (partIter.hasNext && partitionNums.contains(context.partitionId)) { //if it's a partition that contains data we want
           val intPart = partIter.next()
           ks match {
-            case Some(ks) => intPart.multiget(Iterator((intl, ks)))
-            case None     => intPart.multiget(Iterator((intl, ks))) // TODO implement getting the data from iterators because these methods return iterators
+            case Some(_) => intPart.multiget(Iterator((intl, ks.get))).toArray
+            case None     => intPart.getAll(Iterator(intl)).toArray // TODO implement getting the data from iterators because these methods return iterators
           }
-        }
+       } else {
+          Array.empty
+       }
       }, partitions, allowLocal = true)
     Option(results.flatten.toMap)
   }
@@ -84,7 +83,7 @@ class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
    * Unconditionally updates the specified key to have the specified value. Returns a new IntervalRDD
    * that reflects the modification.
    */
-  def put(chr: String, intl: Interval[Long], k: K, v: V): IntervalRDD[K, V] = multiput(chr, intl, Map(k -> v)) 
+  // def put(chr: String, intl: Interval[Long], k: K, v: V): IntervalRDD[K, V] = multiput(chr, intl, Map(k -> v)) 
 
   /**
    * Unconditionally updates the specified keys to have the specified value. Returns a new IntervalRDD
@@ -99,31 +98,30 @@ class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
    * var dataRDD: RDD[(Interval[Long], (Long, AlignmentRecord)] =  entityValRDD.zip(idsRDD)
    * intervalRDD.multiput("chrM", new Interval(viewRegion.start, viewRegion.end), dataRDD)
    */
-  def multiput(chr: String, intl: Interval[Long], kvs: RDD[(K, (S,V))]): IntervalRDD[K, V] = {
+  def multiput(chr: String, intl: Interval[Long], kvs: RDD[(K, (S,V))]): IntervalRDD[K, S, V] = {
 
     // K, (S,V) so it hashes by interval, but once we have each partition we key by the entityid
-    val newData: RDD[(K, (S,V))] = kvs.partitionBy(partitionRDD.partitioner.get)
-
+    val newData: RDD[(K, (S,V))] = kvs.partitionBy(partitionsRDD.partitioner.get)
 
     // not sure if it goes to the correct partitions? Intervals should map to same partitions, but double check
     // theoretically, the data we have should all be one partition
     var partitionList: ListBuffer[Long] = new ListBuffer[Long]()
 
     //NOTE: partitions key by entityid, we only needed to key by interval at first to hash by interval
-    val convertedPartitions: RDD[IntervalPartition[S,V]] = newData.mapPartitionsWithIndex( 
-      (idx, iter) => {
-        partitionList += idx //how to tell if partition exists?
-        Iterator(IntervalPartition(iter)) //TODO: initialize a partition given an existing partition of RDD[(K, S, V))]
-      }, preservesPartitioning = true)
+    // val convertedPartitions: RDD[IntervalPartition[S,V]] = newData.mapPartitionsWithIndex( 
+    //   (idx, iter) => {
+    //     partitionList += idx //how to tell if partition exists?
+    //     Iterator[IntervalPartition[iter]] //TODO: initialize a partition given an existing partition of RDD[(K, S, V))]
+    //     null
+    //   }, preservesPartitioning = true)
 
-    // we use the chr parameter to create our list of chr -> partition mappings
-    var chrPartMap: List[(String, Long)] = partitionList.toList.map(id => (chr, id))
-    bookkeep.insert(intl, chrPartMap)
-    val newRDD: RDD[IntervalPartition[K,V]] = partitionsRDD.zipPartitions(convertedPartitions, true)
-    new IntervalRDD(newRDD)
+    // // we use the chr parameter to create our list of chr -> partition mappings
+    // var chrPartMap: List[(String, Long)] = partitionList.toList.map(id => (chr, id))
+    // bookkeep.insert(intl, chrPartMap)
+    // val newRDD: RDD[IntervalPartition[S,V]] = partitionsRDD.zipPartitions(convertedPartitions, true)
+    // new IntervalRDD(newRDD)   
+    null
   }
-
-
 
 }
 
@@ -132,7 +130,7 @@ object IntervalRDD {
   * Constructs an updatable IntervalRDD from an RDD of a BDGFormat
   * where K is interval
   */
-  def apply[K: ClassTag, S: ClassTag, V: ClassTag](elems: RDD[(K, (S, V))]) : IntervalRDD[K,V] = {
+  def apply[K: ClassTag, S: ClassTag, V: ClassTag](elems: RDD[(K, (S, V))]) : IntervalRDD[K, S, V] = {
     val partitioned = 
       if (elems.partitioner.isDefined) elems
       else elems.partitionBy(new HashPartitioner(elems.partitions.size))
@@ -140,5 +138,6 @@ object IntervalRDD {
       iter => Iterator(IntervalPartition(iter)) //need apply function for creating IntervalPartition from existing partition
       preservesPartitioning = true)
     new IntervalRDD(convertedPartitions) //sets partitionRDD
+    null
   }
 }
