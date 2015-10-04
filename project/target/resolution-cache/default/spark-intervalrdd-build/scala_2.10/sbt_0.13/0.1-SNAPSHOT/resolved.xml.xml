@@ -4,7 +4,7 @@
 		module="spark-intervalrdd-build"
 		revision="0.1-SNAPSHOT"
 		status="integration"
-		publication="20151001150708"
+		publication="20151003182658"
 		e:sbtVersion="0.13" e:scalaVersion="2.10"
 	>
 		<description>
