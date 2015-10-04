@@ -10,52 +10,53 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+F* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
 
 package edu.berkeley.cs.amplab.spark.intervalrdd
 
-import scala.collection.immutable.LongMap
-import scala.reflect.ClassTag
-import org.apache.spark.HashPartitioner
+//import scala.collection.immutable.LongMap
+//import scala.reflect.ClassTag
 
 
-import com.github.akmorrow13.intervaltree._
-import org.scalatest._
-import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
+//import com.github.akmorrow13.intervaltree._
+//import org.scalatest._
+//import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite
 import org.scalatest.Matchers
 
-// TODO: include with SharedSparkContext
-abstract class IntervalPartitionSuite extends FunSuite  {
+class IntervalPartitionSuite extends FunSuite  {
 
   test("setting up environment") {
-    assert(1 == 1)
+  	println("setup")
+    assert(1 == 0)
   }
 
+ //  // partition testing
+ //  test("insert into partition and get values") {
+	// var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
+	// val read1 = (1L,2L)
+	// val read2 = (3L,4L)
+	// val interval: Interval[Long] = new Interval(1L, 6L)
+	// val iter = Iterator((interval, List(read1)), (interval, List(read2)))
+	// partition.multiput(iter)
 
-  // partition testing
-  test("insert into partition and get values") {
-	var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
-	val read1 = (1L,2L)
-	val read2 = (3L,4L)
-	val interval: Interval[Long] = new Interval(1L, 6L)
-	val iter = Iterator((interval, read1), (interval, read2))
-	partition.multiput(iter)
+	// val idList = List(1L, 3L)
+	// val srchIter = Iterator((interval, idList))
+	// val results = partition.multiget(srchIter)
 
-	val idList = List(1L, 3L)
-	val srchIter = Iterator((interval, idList))
-	val results = partition.multiget(srchIter)
+	// println("results")
+	// println(results)
+ //  }
 
-	println("results")
-	println(results)
-  }
-
-  test("getting from a partition") {
-
-  }
+ //  test("getting from a partition") {
+ //  	val read1 = (1L,2L)
+	// val read1 = (3L,4L)
+	// val interval: Interval[Long] = new Interval(1L, 6L)
+ //  	val iter = Iterator((interval, read1), (interval, read2))
+ //  	IntervalPartition(iter)
+ //  }
 
 }
