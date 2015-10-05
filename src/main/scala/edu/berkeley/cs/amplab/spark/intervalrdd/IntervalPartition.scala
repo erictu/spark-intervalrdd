@@ -75,11 +75,14 @@ private[intervalrdd] object IntervalPartition {
   //   new IntervalPartition(map)
   // }
 
-  def apply[K: ClassTag, V: ClassTag]
-      (iter: Iterator[(Interval[Long], (K, V))]): IntervalPartition[K, V] = {
+  def apply[I: ClassTag, K: ClassTag, V: ClassTag]
+      (iter: Iterator[(I, (K, V))]): IntervalPartition[K, V] = {
     val map = new IntervalTree[K, V]()
     iter.foreach { ku =>
-      map.insert(ku._1, ku._2)
+      ku._1 match {
+        // TODO: exception thrown if not Interval
+        case n: Interval[Long] => map.insert(ku._1.asInstanceOf[Interval[Long]], ku._2)
+      }
     }
     new IntervalPartition(map)
   }

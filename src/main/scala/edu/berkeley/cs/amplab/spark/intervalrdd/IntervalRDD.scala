@@ -17,7 +17,6 @@
 
 package edu.berkeley.cs.amplab.spark.intervalrdd
 
-
 import scala.reflect.ClassTag
 
 import org.apache.spark.Dependency
@@ -35,10 +34,16 @@ import com.github.akmorrow13.intervaltree._
 // K = interval
 // S = sec key
 // V = data
-abstract class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
+class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
     /** The underlying representation of the IndexedRDD as an RDD of partitions. */
     private val partitionsRDD: RDD[IntervalPartition[S, V]])
   extends RDD[(K, V)](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) {
+
+  require(partitionsRDD.partitioner.isDefined)
+
+  override val partitioner = partitionsRDD.partitioner
+
+  override protected def getPartitions: Array[Partition] = partitionsRDD.partitions // TODO
 
   // add bookkeeping private structure
   // String is the chromosome/location, Long is partition number
@@ -47,6 +52,12 @@ abstract class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
   /** Gets the value corresponding to the specified request, if any. 
   * a request contains the chromosome, interval, and specified keys
   */
+
+  /** Provides the `RDD[(K, V)]` equivalent output. */
+  override def compute(part: Partition, context: TaskContext): Iterator[(K, V)] = {
+    // TODO
+    null
+  }
 
   // TODO replace Interval Type with K
   def get(chr: String, intl: Interval[Long], k: S): Option[Map[Interval[Long], List[(S, V)]]] = multiget(chr, intl, Option(List(k)))
@@ -111,18 +122,26 @@ abstract class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
     val convertedPartitions: RDD[IntervalPartition[S,V]] = newData.mapPartitionsWithIndex( 
       (idx, iter) => {
         partitionList += idx //how to tell if partition exists?
-        Iterator[IntervalPartition[S, V](iter)] //TODO: initialize a partition given an existing partition of RDD[(K, S, V))]
+        Iterator(IntervalPartition(iter)) //TODO: initialize a partition given an existing partition of RDD[(K, S, V))]
         null
       }, preservesPartitioning = true)
 
-    // // we use the chr parameter to create our list of chr -> partition mappings
-    // var chrPartMap: List[(String, Long)] = partitionList.toList.map(id => (chr, id))
-    // bookkeep.insert(intl, chrPartMap)
-    // val newRDD: RDD[IntervalPartition[S,V]] = partitionsRDD.zipPartitions(convertedPartitions, true)
-    // new IntervalRDD(newRDD)   
-    null
+    // we use the chr parameter to create our list of chr -> partition mappings
+    var chrPartMap: List[(String, Long)] = partitionList.toList.map(id => (chr, id))
+    bookkeep.insert(intl, chrPartMap)
+    val merger = new PartitionMerger[K,S,V]()
+    val newPartitionsRDD = partitionsRDD.zipPartitions(convertedPartitions, true)((aiter, biter) => merger(aiter, biter))
+   new IntervalRDD(newPartitionsRDD)
   }
+}
 
+class PartitionMerger[K: ClassTag, S: ClassTag, V: ClassTag]() {
+  def apply(thisIter: Iterator[IntervalPartition[S, V]], otherIter: Iterator[IntervalPartition[S, V]]): Iterator[IntervalPartition[S, V]] = {
+    // TODO: this is not right/needs to be more filtered
+    val thisPart = thisIter.next()
+    val otherPart = otherIter.next()
+    Iterator(thisPart, otherPart)
+  }
 }
 
 object IntervalRDD {
@@ -135,7 +154,7 @@ object IntervalRDD {
       if (elems.partitioner.isDefined) elems
       else elems.partitionBy(new HashPartitioner(elems.partitions.size))
     val convertedPartitions: RDD[IntervalPartition[S,V]] = partitioned.mapPartitions( // where we use K only to hash by interval
-      iter => Iterator[IntervalPartition[S, V](iter)], //need apply function for creating IntervalPartition from existing partition
+      iter => Iterator(IntervalPartition(iter)), //need apply function for creating IntervalPartition from existing partition
       preservesPartitioning = true)
       new IntervalRDD(convertedPartitions) //sets partitionRDD
   }

@@ -20,9 +20,6 @@ licenses += "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0.html
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.5" % "test"
 
-
-scalaSource in Test := baseDirectory.value / "src/test/scala/edu/berkeley/cs/amplab/spark/intervalrdd"
-
 libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.12.2" % "test"
 
 javaOptions in test += "-Xmx2G"
