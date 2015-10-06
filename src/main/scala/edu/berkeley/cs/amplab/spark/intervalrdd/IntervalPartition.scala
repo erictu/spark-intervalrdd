@@ -66,15 +66,6 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
 
 private[intervalrdd] object IntervalPartition {
 
-  // def apply[K: ClassTag, V: ClassTag]
-  //     (iter: Iterator[(Interval[Long], List[(K, V)])]): IntervalPartition[K, V] = {
-  //   val map = new IntervalTree[K, V]()
-  //   iter.foreach { ku =>
-  //     map.insert(ku._1, ku._2)
-  //   }
-  //   new IntervalPartition(map)
-  // }
-
   def apply[I: ClassTag, K: ClassTag, V: ClassTag]
       (iter: Iterator[(I, (K, V))]): IntervalPartition[K, V] = {
     val map = new IntervalTree[K, V]()
@@ -82,6 +73,7 @@ private[intervalrdd] object IntervalPartition {
       ku._1 match {
         // TODO: exception thrown if not Interval
         case n: Interval[Long] => map.insert(ku._1.asInstanceOf[Interval[Long]], ku._2)
+        case _ => println("error") // TODO
       }
     }
     new IntervalPartition(map)

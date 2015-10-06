@@ -45,9 +45,11 @@ class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
 
   override protected def getPartitions: Array[Partition] = partitionsRDD.partitions // TODO
 
-  // add bookkeeping private structure
-  // String is the chromosome/location, Long is partition number
-  var bookkeep: IntervalTree[String, Long] = new IntervalTree[String, Long]()
+  def getParts: Array[Partition] = getPartitions
+
+  // // add bookkeeping private structure
+  // // String is the chromosome/location, Long is partition number
+  // var bookkeep: IntervalTree[String, Long] = new IntervalTree[String, Long]()
 
   /** Gets the value corresponding to the specified request, if any. 
   * a request contains the chromosome, interval, and specified keys
@@ -69,15 +71,18 @@ class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
   * Assume that we're only getting data that exists (if it doesn't exist,
   * would have been handled by upper LazyMaterialization layer
   */
+  // TODO: this is not multiget, can only pull from 1 partition
   def multiget(chr: String, intl: Interval[Long], ks: Option[List[S]]): Option[Map[Interval[Long], List[(S, V)]]] = { 
-    val partitionNums: List[(String, Long)] = bookkeep.search(intl, chr) 
+    // get partitions according to chromosome
+    val ksByPartition: Int = partitioner.get.getPartition(chr)
+    val partitions: Seq[Int] = Array(ksByPartition).toSeq
     // TODO: remove toInt and build in
-    val partitions = partitionNums.map { k => k._2.toInt  }.toSeq
+   // val partitions = ksByPartition.map { k => k._2.toInt  }.toSeq
 
     // get data from parititons
     val results: Array[Array[(Interval[Long], List[(S, V)])]] = context.runJob(partitionsRDD,
       (context: TaskContext, partIter: Iterator[IntervalPartition[S, V]]) => { 
-       if (partIter.hasNext && partitionNums.contains(context.partitionId)) { //if it's a partition that contains data we want
+       if (partIter.hasNext && (ksByPartition == context.partitionId)) { //if it's a partition that contains data we want
           val intPart = partIter.next()
           ks match {
             case Some(_) => intPart.multiget(Iterator((intl, ks.get))).toArray
@@ -128,7 +133,7 @@ class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
 
     // we use the chr parameter to create our list of chr -> partition mappings
     var chrPartMap: List[(String, Long)] = partitionList.toList.map(id => (chr, id))
-    bookkeep.insert(intl, chrPartMap)
+    // bookkeep.insert(intl, chrPartMap)
     val merger = new PartitionMerger[K,S,V]()
     val newPartitionsRDD = partitionsRDD.zipPartitions(convertedPartitions, true)((aiter, biter) => merger(aiter, biter))
    new IntervalRDD(newPartitionsRDD)
@@ -146,17 +151,15 @@ class PartitionMerger[K: ClassTag, S: ClassTag, V: ClassTag]() {
 
 object IntervalRDD {
   /**
-  * Constructs an updatable IntervalRDD from an RDD of a BDGFormat
-  * where K is interval
+  * Constructs an updatable IntervalRDD from an RDD of a BDGFormat where partitioned by chromosome
   */
   def apply[K: ClassTag, S: ClassTag, V: ClassTag](elems: RDD[(Interval[Long], (S, V))]) : IntervalRDD[K, S, V] = {
     val partitioned = 
       if (elems.partitioner.isDefined) elems
       else elems.partitionBy(new HashPartitioner(elems.partitions.size))
-    val convertedPartitions: RDD[IntervalPartition[S,V]] = partitioned.mapPartitions( // where we use K only to hash by interval
+    val convertedPartitions: RDD[IntervalPartition[S,V]] = partitioned.mapPartitions( 
       iter => Iterator(IntervalPartition(iter)), //need apply function for creating IntervalPartition from existing partition
       preservesPartitioning = true)
-    // TODO: insert all partitions in bookkeeping structure
-    new IntervalRDD(convertedPartitions) //sets partitionRDD
+    new IntervalRDD(convertedPartitions) 
   }
 }
