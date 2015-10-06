@@ -156,6 +156,7 @@ object IntervalRDD {
     val convertedPartitions: RDD[IntervalPartition[S,V]] = partitioned.mapPartitions( // where we use K only to hash by interval
       iter => Iterator(IntervalPartition(iter)), //need apply function for creating IntervalPartition from existing partition
       preservesPartitioning = true)
+    // TODO: insert all partitions in bookkeeping structure
     new IntervalRDD(convertedPartitions) //sets partitionRDD
   }
 }

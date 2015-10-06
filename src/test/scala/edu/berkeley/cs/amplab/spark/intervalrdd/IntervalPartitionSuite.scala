@@ -17,46 +17,110 @@ F* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 package edu.berkeley.cs.amplab.spark.intervalrdd
 
-//import scala.collection.immutable.LongMap
-//import scala.reflect.ClassTag
-
-
-//import com.github.akmorrow13.intervaltree._
-//import org.scalatest._
-//import org.apache.spark.rdd.RDD
+import com.github.akmorrow13.intervaltree._
+import org.scalatest._
+import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite
 import org.scalatest.Matchers
 
 class IntervalPartitionSuite extends FunSuite  {
 
-  test("setting up environment") {
-  	println("setup")
-    assert(1 == 0)
-  }
 
- //  // partition testing
- //  test("insert into partition and get values") {
-	// var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
-	// val read1 = (1L,2L)
-	// val read2 = (3L,4L)
-	// val interval: Interval[Long] = new Interval(1L, 6L)
-	// val iter = Iterator((interval, List(read1)), (interval, List(read2)))
-	// partition.multiput(iter)
+	test("create new partition") {
+		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
+		assert(partition != null)
+	}
 
-	// val idList = List(1L, 3L)
-	// val srchIter = Iterator((interval, idList))
-	// val results = partition.multiget(srchIter)
+	test("create partition from iterator") {
+		val interval1: Interval[Long] = new Interval(0L, 99L)
+		val interval2: Interval[Long] = new Interval(100L, 199L)
 
-	// println("results")
-	// println(results)
- //  }
+		val read1 = (1L,2L)
+		val read2 = (1L,4L)
 
- //  test("getting from a partition") {
- //  	val read1 = (1L,2L)
-	// val read1 = (3L,4L)
-	// val interval: Interval[Long] = new Interval(1L, 6L)
- //  	val iter = Iterator((interval, read1), (interval, read2))
- //  	IntervalPartition(iter)
- //  }
+
+		val iter = Iterator((interval1, read1), (interval2, read1))
+		val partition = IntervalPartition(iter)
+		assert(partition != null)
+	}
+
+	test("get values from iterator-created partition") {
+		val interval1: Interval[Long] = new Interval(0L, 99L)
+		val interval2: Interval[Long] = new Interval(100L, 199L)
+
+		val read1 = (1L,2L)
+		val read2 = (1L,500L)
+		val read3 = (2L, 2L)
+		val read4 =  (2L, 500L)
+
+		val iter = Iterator((interval1, read1), (interval2, read2), (interval1, read3), (interval2, read4))
+		val partition = IntervalPartition(iter)
+
+		val results = partition.getAll(Iterator(interval1, interval2))
+	    for (ku <- results) {
+	      if (ku._1.equals(interval1)) {
+	      	assert(ku._2.contains(read1))
+	      	assert(ku._2.contains(read3))
+	      }
+	      if (ku._1.equals(interval2)) {
+	      	assert(ku._2.contains(read2))
+	      	assert(ku._2.contains(read4))
+	      }
+	    }
+	}
+
+	test("put some for iterator of intervals and key-values") {
+		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
+
+		val interval1: Interval[Long] = new Interval(0L, 99L)
+		val interval2: Interval[Long] = new Interval(100L, 199L)
+
+		val read1 = (1L,2L)
+		val read2 = (1L,500L)
+		val read3 = (2L, 2L)
+		val read4 =  (2L, 500L)
+		val iter = Iterator((interval1, List(read1, read3)), (interval2, List(read2, read4)))
+
+		val newPartition = partition.multiput(iter)
+
+		// assert values are in the new partition
+		val results = newPartition.getAll(Iterator(interval1, interval2))
+	    for (ku <- results) {
+	      if (ku._1.equals(interval1)) {
+	      	assert(ku._2.contains(read1))
+	      	assert(ku._2.contains(read3))
+	      }
+	      if (ku._1.equals(interval2)) {
+	      	assert(ku._2.contains(read2))
+	      	assert(ku._2.contains(read4))
+	      }
+	    }	
+	}
+
+	test("get some for iterator of intervals") {
+		val interval1: Interval[Long] = new Interval(0L, 99L)
+		val interval2: Interval[Long] = new Interval(100L, 199L)
+
+		val read1 = (1L,2L)
+		val read2 = (1L,500L)
+		val read3 = (2L, 2L)
+		val read4 =  (2L, 500L)
+
+		val iter = Iterator((interval1, read1), (interval2, read2), (interval1, read3), (interval2, read4))
+		val partition = IntervalPartition(iter)
+
+		val results = partition.multiget(Iterator((interval1, List(1L)),(interval2, List(1L, 2L))))
+
+	    for (ku <- results) {
+	    	if (ku._1.equals(interval1)) {
+				assert(ku._2.contains(read1))
+				assert(!ku._2.contains(read2))				
+			}
+			if (ku._1.equals(interval2)) {
+				assert(ku._2.contains(read2))
+				assert(ku._2.contains(read4))
+			}
+	    }
+	}
 
 }
