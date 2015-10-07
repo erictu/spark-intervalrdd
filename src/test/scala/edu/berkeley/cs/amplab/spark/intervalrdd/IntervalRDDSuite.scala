@@ -59,6 +59,9 @@ class IntervalRDDSuite extends FunSuite  {
 
   }
 
+  test("how get should work") {
+
+  }
 
   test("get one interval, k value") {
     //creating intervals
@@ -72,9 +75,12 @@ class IntervalRDDSuite extends FunSuite  {
     val v1 =  "recordval1 0-99"
     val v2 =  "recordval2 100-199"
     val v3 =  "recordval3 200-299"
-    val rec1: (String, String) = ("chr1", v1)
-    val rec2: (String, String) = ("chr2", v2)
-    val rec3: (String, String) = ("chr3", v3)
+    // rec1 -> chr1
+    val rec1: (String, String) = ("h1", v1)
+    // rec2 -> chr2
+    val rec2: (String, String) = ("h2", v2)
+    // rec3 -> chr3
+    val rec3: (String, String) = ("h3", v3)
     var recArr: Array[(String, String)] = Array(rec1, rec2, rec3)
     var recArrRDD: RDD[(String, String)] = sc.parallelize(recArr)
     var zipped: RDD[(Interval[Long], (String, String))] = intArrRDD.zip(recArrRDD)
@@ -101,31 +107,36 @@ class IntervalRDDSuite extends FunSuite  {
 
   test("put multiple intervals into RDD to existing chromosome") {
 
-    // //creating intervals
-    // val int1: Interval[Long] = new Interval(0L, 99L)
-    // val int2: Interval[Long] = new Interval(100L, 199L)
-    // val int3: Interval[Long] = new Interval(200L, 299L)
-    // var intArr: Array[Interval[Long]] = Array(int1, int2, int3)
-    // var intArrRDD: RDD[Interval[Long]] = sc.parallelize(intArr)
+    //creating intervals
+    val int1: Interval[Long] = new Interval(0L, 99L)
+    val int2: Interval[Long] = new Interval(100L, 199L)
+    val int3: Interval[Long] = new Interval(200L, 299L)
 
-    // //creating data
-    // val v1 =  "recordval1 0-99"
-    // val v2 =  "recordval2 100-199"
-    // val v3 =  "recordval3 200-299"
-    // val rec1: (String, String) = ("chr1", v1)
-    // val rec2: (String, String) = ("chr2", v2)
-    // val rec3: (String, String) = ("chr3", v3)
-    // var recArr: Array[(String, String)] = Array(rec1, rec2, rec3)
-    // var recArrRDD: RDD[(String, String)] = sc.parallelize(recArr)
-    // var zipped: RDD[(Interval[Long], (String, String))] = intArrRDD.zip(recArrRDD)
+    var intArr: Array[Interval[Long]] = Array(int1, int2, int3)
+    var intArrRDD: RDD[Interval[Long]] = sc.parallelize(intArr)
 
-    // //initializing IntervalRDD with certain values
-    // val testRDD: IntervalRDD[Interval[Long], String, String] = IntervalRDD(zipped)
+    //creating data
+    val v1 =  "recordval1 0-99"
+    val v2 =  "recordval2 100-199"
+    val v3 =  "recordval3 200-299"
+    // rec1 -> chr1
+    val rec1: (String, String) = ("h1", v1)
+    // rec2 -> chr2
+    val rec2: (String, String) = ("h2", v2)
+    // rec3 -> chr3
+    val rec3: (String, String) = ("h3", v3)
+    var recArr: Array[(String, String)] = Array(rec1, rec2, rec3)
+    var recArrRDD: RDD[(String, String)] = sc.parallelize(recArr)
+    var zipped: RDD[(Interval[Long], (String, String))] = intArrRDD.zip(recArrRDD)
 
+    //initializing IntervalRDD with certain values
+    val testRDD: IntervalRDD[Interval[Long], String, String] = IntervalRDD(zipped)
+// multiput(chr: String, intl: Interval[Long], kvs: RDD[(K, (S,V))]): IntervalRDD[K, S, V]
 
-    // val chr = "chr1"
-    // val intl = new Interval(200L, 299L)
-    // testRDD.multiput()
+    val chr = "chr1"
+    val intl = new Interval(200L, 299L)
+
+    assert(0 == 1)
 
   }
 
@@ -162,6 +173,6 @@ class IntervalRDDSuite extends FunSuite  {
 	// var insertArrRDD: RDD[(String, String)] = sc.parallelize(insertArr)
 	// var insertZipped: RDD[(Interval[Long], (String, String))] = keyRDD.zip(insertArrRDD)
 	// testRDD.multiput("chr1", new Interval(300L, 399L), insertZipped)
- //  }
+  }
 
 }

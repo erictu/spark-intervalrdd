@@ -38,6 +38,10 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
     this(new IntervalTree[K, V]())
   }
 
+  def getTree(): IntervalTree[K, V] = {
+    iTree
+  }
+
   protected def withMap
       (map: IntervalTree[K, V]): IntervalPartition[K, V] = {
     new IntervalPartition(map)
@@ -59,6 +63,11 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
     for (ku <- kvs) {
       newTree.insert(ku._1, ku._2)
     }
+    this.withMap(newTree)
+  }
+
+  def mergePartitions(p: IntervalPartition[K, V]): IntervalPartition[K, V] = {
+    val newTree = iTree.merge(p.getTree)
     this.withMap(newTree)
   }
 
