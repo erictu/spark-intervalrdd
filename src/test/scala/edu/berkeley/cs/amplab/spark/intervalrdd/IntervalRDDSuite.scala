@@ -35,144 +35,122 @@ class IntervalRDDSuite extends FunSuite  {
 
   var conf = new SparkConf(false)
   var sc = new SparkContext("local", "test", conf)
+  val partitions = 100 
 
   test("create IntervalRDD from RDD using apply") {
     //creating intervals
     val int1: Interval[Long] = new Interval(0L, 99L)
     val int2: Interval[Long] = new Interval(100L, 199L)
     val int3: Interval[Long] = new Interval(200L, 299L)
-    var intArr: Array[Interval[Long]] = Array(int1, int2, int3)
-    var intArrRDD: RDD[Interval[Long]] = sc.parallelize(intArr)
+    val k1 = ("chr1", int3)
+    val k2 = ("chr2", int3)
+    val k3 = ("chr3", int3)
+
+    var intArr = Array(k1, k2, k3)
+    var intArrRDD: RDD[(String, Interval[Long])] = sc.parallelize(intArr)
 
     //creating data
-    val rec1: (String, String) = ("chr1", "recordval1 0-99")
-    val rec2: (String, String) = ("chr2", "recordval2 100-199")
-    val rec3: (String, String) = ("chr3", "recordval3 200-299")
+    val rec1: (String, String) = ("person1", "data for person 1, recordval1 0-99")
+    val rec2: (String, String) = ("person2", "data for person 2, recordval2 100-199")
+    val rec3: (String, String) = ("person3", "data for person 3, recordval3 200-299")
     var recArr: Array[(String, String)] = Array(rec1, rec2, rec3)
     var recArrRDD: RDD[(String, String)] = sc.parallelize(recArr)
-    var zipped: RDD[(Interval[Long], (String, String))] = intArrRDD.zip(recArrRDD)
+    var zipped: RDD[((String, Interval[Long]), (String, String))] = intArrRDD.zip(recArrRDD)
 
     //initializing IntervalRDD with certain values
-    var testRDD: IntervalRDD[Interval[Long], String, String] = IntervalRDD(zipped)
+    var testRDD: IntervalRDD[String, Interval[Long], String, String] = IntervalRDD(zipped)
 
     assert(1 == 1)
 
   }
 
-  test("how get should work") {
-
-  }
-
   test("get one interval, k value") {
-    //creating intervals
+
     val int1: Interval[Long] = new Interval(0L, 99L)
     val int2: Interval[Long] = new Interval(100L, 199L)
     val int3: Interval[Long] = new Interval(200L, 299L)
-    var intArr: Array[Interval[Long]] = Array(int1, int2, int3)
-    var intArrRDD: RDD[Interval[Long]] = sc.parallelize(intArr)
+    val k1 = ("chr1", int2)
+    val k2 = ("chr2", int2)
+    val k3 = ("chr3", int3)
+
+    var intArr = Array(k1, k2, k3)
+    var intArrRDD: RDD[(String, Interval[Long])] = sc.parallelize(intArr, 3)
 
     //creating data
-    val v1 =  "recordval1 0-99"
-    val v2 =  "recordval2 100-199"
-    val v3 =  "recordval3 200-299"
-    // rec1 -> chr1
-    val rec1: (String, String) = ("h1", v1)
-    // rec2 -> chr2
-    val rec2: (String, String) = ("h2", v2)
-    // rec3 -> chr3
-    val rec3: (String, String) = ("h3", v3)
+    val v1 = "data for person 1, recordval1 100-199"
+    val v2 = "data for person 2, recordval2 100-199"
+    val v3 = "data for person 3, recordval3 200-299"
+
+    val rec1: (String, String) = ("person1", v1)
+    val rec2: (String, String) = ("person2", v2)
+    val rec3: (String, String) = ("person3", v3)
+
     var recArr: Array[(String, String)] = Array(rec1, rec2, rec3)
-    var recArrRDD: RDD[(String, String)] = sc.parallelize(recArr)
-    var zipped: RDD[(Interval[Long], (String, String))] = intArrRDD.zip(recArrRDD)
+    var recArrRDD: RDD[(String, String)] = sc.parallelize(recArr, 3)
+    var zipped: RDD[((String, Interval[Long]), (String, String))] = intArrRDD.zip(recArrRDD)
 
     //initializing IntervalRDD with certain values
-    val testRDD: IntervalRDD[Interval[Long], String, String] = IntervalRDD(zipped)
+    var testRDD: IntervalRDD[String, Interval[Long], String, String] = IntervalRDD(zipped)
     
-    var mappedResults: Option[Map[Interval[Long], List[(String, String)]]] = testRDD.get("chr1", int1)
+    var mappedResults: Option[Map[Interval[Long], List[(String, String)]]] = testRDD.get("chr1", int2)
     var results = mappedResults.get
-
     assert(results.head._2.head._2 == v1)
-
-    mappedResults = testRDD.get("chr1", int2)
-    results = mappedResults.get
-
-    results.head
-    assert(results.head._2.head._2 == v2)
 
     mappedResults = testRDD.get("chr3", int3)
     results = mappedResults.get
-
     assert(results.head._2.head._2 == v3)
+
+
+
   }
 
   test("put multiple intervals into RDD to existing chromosome") {
 
-    //creating intervals
     val int1: Interval[Long] = new Interval(0L, 99L)
     val int2: Interval[Long] = new Interval(100L, 199L)
     val int3: Interval[Long] = new Interval(200L, 299L)
+    val k1 = ("chr1", int1)
+    val k2 = ("chr2", int2)
+    val k3 = ("chr3", int3)
 
-    var intArr: Array[Interval[Long]] = Array(int1, int2, int3)
-    var intArrRDD: RDD[Interval[Long]] = sc.parallelize(intArr)
+    var intArr = Array(k1, k2, k3)
+    var intArrRDD: RDD[(String, Interval[Long])] = sc.parallelize(intArr)
 
     //creating data
-    val v1 =  "recordval1 0-99"
-    val v2 =  "recordval2 100-199"
-    val v3 =  "recordval3 200-299"
-    // rec1 -> chr1
-    val rec1: (String, String) = ("h1", v1)
-    // rec2 -> chr2
-    val rec2: (String, String) = ("h2", v2)
-    // rec3 -> chr3
-    val rec3: (String, String) = ("h3", v3)
+    val v1 = "data for person 1, recordval1 0-99"
+    val v2 = "data for person 2, recordval2 100-199"
+    val v3 = "data for person 3, recordval3 200-299"
+
+    val rec1: (String, String) = ("person1", v1)
+    val rec2: (String, String) = ("person2", v2)
+    val rec3: (String, String) = ("person3", v3)
     var recArr: Array[(String, String)] = Array(rec1, rec2, rec3)
     var recArrRDD: RDD[(String, String)] = sc.parallelize(recArr)
-    var zipped: RDD[(Interval[Long], (String, String))] = intArrRDD.zip(recArrRDD)
+    var zipped: RDD[((String, Interval[Long]), (String, String))] = intArrRDD.zip(recArrRDD)
 
     //initializing IntervalRDD with certain values
-    val testRDD: IntervalRDD[Interval[Long], String, String] = IntervalRDD(zipped)
-// multiput(chr: String, intl: Interval[Long], kvs: RDD[(K, (S,V))]): IntervalRDD[K, S, V]
+    var testRDD: IntervalRDD[String, Interval[Long], String, String] = IntervalRDD(zipped)
 
-    val chr = "chr1"
-    val intl = new Interval(200L, 299L)
+    intArr = Array(("chr1", int2), ("chr2", int3))
+    intArrRDD = sc.parallelize(intArr)
 
-    assert(0 == 1)
+    val v4 = "data for person 1, recordval 100 - 199"
+    val v5 = "data for person 2, recordval 200 - 299"
 
+    val rec4: (String, String) = ("person1", v4)
+    val rec5: (String, String) = ("person2", v5)
+
+    recArr = Array(rec4, rec5)
+    recArrRDD = sc.parallelize(recArr)
+    zipped = intArrRDD.zip(recArrRDD)
+
+    val newRDD: IntervalRDD[String, Interval[Long], String, String] = testRDD.multiput(zipped)
+
+    var mappedResults: Option[Map[Interval[Long], List[(String, String)]]] = newRDD.get("chr2", int3)
+    var results = mappedResults.get
+    println(results)
+    assert(results.head._2.head._2 == v5)
   }
 
-  test("put multiple intervals to new chromosome") {
-
-  }
-
-  test("Small Test") {
-    
- //    //creating intervals
- //    val int1: Interval[Long] = new Interval(0L, 99L)
- //    val int2: Interval[Long] = new Interval(100L, 199L)
- //    val int3: Interval[Long] = new Interval(200L, 299L)
- //    var intArr: Array[Interval[Long]] = Array(int1, int2, int3)
- //    var intArrRDD: RDD[Interval[Long]] = sc.parallelize(intArr)
-
- //    //creating data
- //    val rec1: (String, String) = ("chr1", "recordval1 0-99")
- //    val rec2: (String, String) = ("chr2", "recordval2 100-199")
-	// val rec3: (String, String) = ("chr3", "recordval3 200-299")
-	// var recArr: Array[(String, String)] = Array(rec1, rec2, rec3)
-	// var recArrRDD: RDD[(String, String)] = sc.parallelize(recArr)
-	// var zipped: RDD[(Interval[Long], (String, String))] = intArrRDD.zip(recArrRDD)
-
-	// //initializing IntervalRDD with certain values
-	// var testRDD: IntervalRDD[Interval[Long], String, String] = IntervalRDD(zipped)
-
-	// //creating stuff to insert into our IntervalRDD
-	// var keyRDD: RDD[Interval[Long]] = sc.parallelize(Array(new Interval(300L, 399L)))
- //    val insert1: (String, String) = ("chr1", "insertordval1 300-399")
- //    val insert2: (String, String) = ("chr2", "insertordval2 300-399")
-	// val insert3: (String, String) = ("chr3", "insertordval3 300-399")
-	// var insertArr: Array[(String, String)] = Array(insert1, insert2, insert3)
-	// var insertArrRDD: RDD[(String, String)] = sc.parallelize(insertArr)
-	// var insertZipped: RDD[(Interval[Long], (String, String))] = keyRDD.zip(insertArrRDD)
-	// testRDD.multiput("chr1", new Interval(300L, 399L), insertZipped)
-  }
 
 }
