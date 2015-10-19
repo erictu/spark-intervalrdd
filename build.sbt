@@ -1,6 +1,6 @@
 name := "spark-intervalrdd"
 
-version := "0.3"
+version := "0.3-SNAPSHOT"
 
 organization := "edu.berkeley.cs.amplab"
 
