@@ -27,9 +27,22 @@ import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
+import org.bdgenomics.utils.instrumentation.Metrics
+
 import scala.collection.mutable.ListBuffer
 
 import com.github.akmorrow13.intervaltree._
+
+
+object IntervalTimers extends Metrics {
+  val MultigetTime = timer("Multiget timer")
+  val MultiputTime = timer("Multiput timer")
+  val RunGetJob = timer("Run Get Job")
+  val InitTime = timer("Initialize RDD")
+  val MergePutTime = timer("Put: merging partitions together")
+  val ZipPartTime = timer("Put: Zipping Partitions Together")
+
+}
 
 // K = chr, interval
 // S = sec key
@@ -73,24 +86,26 @@ class IntervalRDD[C: ClassTag, K: ClassTag, S: ClassTag, V: ClassTag](
   */
   // TODO: this is not multiget, can only pull from 1 partition
   def multiget(chr: String, intl: Interval[Long], ks: Option[List[S]]): Option[Map[Interval[Long], List[(S, V)]]] = { 
-
-    val k = (chr, intl)
-    val ksByPartition: Int = partitioner.get.getPartition(k)
-    val partitions: Seq[Int] = Array(ksByPartition).toSeq
-
-    val results: Array[Array[(Interval[Long], List[(S, V)])]] = context.runJob(partitionsRDD,
-      (context: TaskContext, partIter: Iterator[IntervalPartition[C, S, V]]) => { 
-       if (partIter.hasNext && (ksByPartition == context.partitionId)) { 
-          val intPart = partIter.next()
-          ks match {
-            case Some(_) => intPart.multiget(Iterator((intl, ks.get))).toArray
-            case None     => intPart.getAll(Iterator(intl)).toArray 
-          }
-       } else {
-          Array.empty
-       }
-      }, partitions, allowLocal = true)
-    Option(results.flatten.toMap)
+    IntervalTimers.MultigetTime.time{
+      val k = (chr, intl)
+      val ksByPartition: Int = partitioner.get.getPartition(k)
+      val partitions: Seq[Int] = Array(ksByPartition).toSeq
+      val results: Array[Array[(Interval[Long], List[(S, V)])]] = IntervalTimers.RunGetJob.time{
+        context.runJob(partitionsRDD,
+          (context: TaskContext, partIter: Iterator[IntervalPartition[C, S, V]]) => { 
+           if (partIter.hasNext && (ksByPartition == context.partitionId)) { 
+              val intPart = partIter.next()
+              ks match {
+                case Some(_) => intPart.multiget(Iterator((intl, ks.get))).toArray
+                case None     => intPart.getAll(Iterator(intl)).toArray 
+              }
+           } else {
+              Array.empty
+           }
+          }, partitions, allowLocal = true)
+      }
+      Option(results.flatten.toMap)
+    }
   }
 
   /**
@@ -113,24 +128,25 @@ class IntervalRDD[C: ClassTag, K: ClassTag, S: ClassTag, V: ClassTag](
    * intervalRDD.multiput("chrM", new Interval(viewRegion.start, viewRegion.end), dataRDD)
    */
   def multiput(kvs: RDD[((C,K), (S,V))]): IntervalRDD[C, K, S, V] = {
+    IntervalTimers.MultiputTime.time{
+      val newData: RDD[((C, K), (S,V))] = kvs.partitionBy(partitionsRDD.partitioner.get)
 
-    val newData: RDD[((C, K), (S,V))] = kvs.partitionBy(partitionsRDD.partitioner.get)
+      var partitionList: ListBuffer[Long] = new ListBuffer[Long]()
 
-    var partitionList: ListBuffer[Long] = new ListBuffer[Long]()
+      // convert all partitions of the original RDD to Interval Partitions
+      val convertedPartitions: RDD[IntervalPartition[C, S, V]] = newData.mapPartitionsWithIndex( 
+        (idx, iter) => {
+          partitionList += idx 
+          Iterator(IntervalPartition(iter)) 
+        }, preservesPartitioning = true)
 
-    // convert all partitions of the original RDD to Interval Partitions
-    val convertedPartitions: RDD[IntervalPartition[C, S, V]] = newData.mapPartitionsWithIndex( 
-      (idx, iter) => {
-        partitionList += idx 
-        Iterator(IntervalPartition(iter)) 
-      }, preservesPartitioning = true)
-
-    // merge the new partitions with existing partitions
-    val merger = new PartitionMerger[C,K,S,V]()
-    val newPartitionsRDD = partitionsRDD.zipPartitions(convertedPartitions, true)((aiter, biter) => merger(aiter, biter))
-
-    new IntervalRDD(newPartitionsRDD)
-
+      // merge the new partitions with existing partitions
+      val merger = new PartitionMerger[C,K,S,V]()
+      val newPartitionsRDD = IntervalTimers.ZipPartTime.time{
+        partitionsRDD.zipPartitions(convertedPartitions, true)((aiter, biter) => merger(aiter, biter))
+      }
+      new IntervalRDD(newPartitionsRDD)
+    }
   }
 
 }
@@ -182,13 +198,15 @@ object IntervalRDD {
   * Constructs an updatable IntervalRDD from an RDD of a BDGFormat where partitioned by chromosome
   */
   def apply[C: ClassTag, K: ClassTag, S: ClassTag, V: ClassTag](elems: RDD[((C, K), (S, V))]) : IntervalRDD[C, K, S, V] = {
-    val partitioned = 
-      if (elems.partitioner.isDefined) elems
-      // TODO: remove hardcode for partition count
-      else elems.partitionBy(new ChrPartitioner(10))
-    val convertedPartitions: RDD[IntervalPartition[C, S, V]] = partitioned.mapPartitions( 
-      iter => Iterator(IntervalPartition(iter)), 
-      preservesPartitioning = true)
-    new IntervalRDD(convertedPartitions) 
+    IntervalTimers.InitTime.time{
+      val partitioned = 
+        if (elems.partitioner.isDefined) elems
+        // TODO: remove hardcode for partition count
+        else elems.partitionBy(new ChrPartitioner(10))
+      val convertedPartitions: RDD[IntervalPartition[C, S, V]] = partitioned.mapPartitions( 
+        iter => Iterator(IntervalPartition(iter)), 
+        preservesPartitioning = true)
+      new IntervalRDD(convertedPartitions) 
+    }
   }
 }
