@@ -8,6 +8,11 @@ scalaVersion := "2.10.4"
 
 libraryDependencies += "org.apache.spark" %% "spark-core" % "1.5.0"
 
+libraryDependencies += "org.bdgenomics.adam" %% "adam-cli" % "0.18.0"
+libraryDependencies += "org.bdgenomics.adam" %% "adam-core" % "0.18.0"
+libraryDependencies += "org.bdgenomics.adam" %% "adam-core" % "0.18.0" % "test" classifier "tests"
+libraryDependencies += "org.bdgenomics.utils" %% "utils-misc" % "0.2.3" % "test" classifier "tests"
+
 //spName := := "amplab/spark-intervalrdd"
 
 //sparkVersion := "1.5.0"

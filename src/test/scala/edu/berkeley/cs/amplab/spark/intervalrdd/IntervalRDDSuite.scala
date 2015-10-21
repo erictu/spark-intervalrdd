@@ -30,6 +30,7 @@ import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite
 import org.scalatest.Matchers
+import org.bdgenomics.adam.models.ReferenceRegion
 
 class IntervalRDDSuite extends FunSuite  {
 
@@ -39,15 +40,20 @@ class IntervalRDDSuite extends FunSuite  {
 
   test("create IntervalRDD from RDD using apply") {
     //creating intervals
-    val int1: Interval[Long] = new Interval(0L, 99L)
-    val int2: Interval[Long] = new Interval(100L, 199L)
-    val int3: Interval[Long] = new Interval(200L, 299L)
-    val k1 = ("chr1", int3)
-    val k2 = ("chr2", int3)
-    val k3 = ("chr3", int3)
+
+    val chr1 = "chr1"
+    val chr2 = "chr2"
+    val chr3 = "chr3"
+    val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
+    val region2: ReferenceRegion = new ReferenceRegion(chr2, 100L, 199L)
+    val region3: ReferenceRegion = new ReferenceRegion(chr3, 200L, 299L)
+
+    val k1 = (chr1, region3)
+    val k2 = (chr2, region3)
+    val k3 = (chr3, region3)
 
     var intArr = Array(k1, k2, k3)
-    var intArrRDD: RDD[(String, Interval[Long])] = sc.parallelize(intArr)
+    var intArrRDD: RDD[(String, ReferenceRegion)] = sc.parallelize(intArr)
 
     //creating data
     val rec1: (String, String) = ("person1", "data for person 1, recordval1 0-99")
@@ -55,10 +61,10 @@ class IntervalRDDSuite extends FunSuite  {
     val rec3: (String, String) = ("person3", "data for person 3, recordval3 200-299")
     var recArr: Array[(String, String)] = Array(rec1, rec2, rec3)
     var recArrRDD: RDD[(String, String)] = sc.parallelize(recArr)
-    var zipped: RDD[((String, Interval[Long]), (String, String))] = intArrRDD.zip(recArrRDD)
+    var zipped: RDD[((String, ReferenceRegion), (String, String))] = intArrRDD.zip(recArrRDD)
 
     //initializing IntervalRDD with certain values
-    var testRDD: IntervalRDD[String, Interval[Long], String, String] = IntervalRDD(zipped)
+    var testRDD: IntervalRDD[ReferenceRegion, String, String] = IntervalRDD(zipped)
 
     assert(1 == 1)
 
@@ -66,15 +72,20 @@ class IntervalRDDSuite extends FunSuite  {
 
   test("get one interval, k value") {
 
-    val int1: Interval[Long] = new Interval(0L, 99L)
-    val int2: Interval[Long] = new Interval(100L, 199L)
-    val int3: Interval[Long] = new Interval(200L, 299L)
-    val k1 = ("chr1", int2)
-    val k2 = ("chr2", int2)
-    val k3 = ("chr3", int3)
+    val chr1 = "chr1"
+    val chr2 = "chr2"
+    val chr3 = "chr3"
+
+    val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
+    val region2: ReferenceRegion = new ReferenceRegion(chr2, 100L, 199L)
+    val region3: ReferenceRegion = new ReferenceRegion(chr3, 200L, 299L)
+
+    val k1 = (chr1, region1)
+    val k2 = (chr2, region2)
+    val k3 = (chr3, region3)
 
     var intArr = Array(k1, k2, k3)
-    var intArrRDD: RDD[(String, Interval[Long])] = sc.parallelize(intArr, 3)
+    var intArrRDD: RDD[(String, ReferenceRegion)] = sc.parallelize(intArr, 3)
 
     //creating data
     val v1 = "data for person 1, recordval1 100-199"
@@ -87,34 +98,37 @@ class IntervalRDDSuite extends FunSuite  {
 
     var recArr: Array[(String, String)] = Array(rec1, rec2, rec3)
     var recArrRDD: RDD[(String, String)] = sc.parallelize(recArr, 3)
-    var zipped: RDD[((String, Interval[Long]), (String, String))] = intArrRDD.zip(recArrRDD)
+    var zipped: RDD[((String, ReferenceRegion), (String, String))] = intArrRDD.zip(recArrRDD)
 
     //initializing IntervalRDD with certain values
-    var testRDD: IntervalRDD[String, Interval[Long], String, String] = IntervalRDD(zipped)
+    var testRDD: IntervalRDD[ReferenceRegion, String, String] = IntervalRDD(zipped)
     
-    var mappedResults: Option[Map[Interval[Long], List[(String, String)]]] = testRDD.get("chr1", int2)
+    var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get("chr1", region2)
     var results = mappedResults.get
     assert(results.head._2.head._2 == v1)
 
-    mappedResults = testRDD.get("chr3", int3)
+    mappedResults = testRDD.get("chr3", region3)
     results = mappedResults.get
     assert(results.head._2.head._2 == v3)
-
-
 
   }
 
   test("put multiple intervals into RDD to existing chromosome") {
 
-    val int1: Interval[Long] = new Interval(0L, 99L)
-    val int2: Interval[Long] = new Interval(100L, 199L)
-    val int3: Interval[Long] = new Interval(200L, 299L)
-    val k1 = ("chr1", int1)
-    val k2 = ("chr2", int2)
-    val k3 = ("chr3", int3)
+    val chr1 = "chr1"
+    val chr2 = "chr2"
+    val chr3 = "chr3"
+
+    val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
+    val region2: ReferenceRegion = new ReferenceRegion(chr2, 100L, 199L)
+    val region3: ReferenceRegion = new ReferenceRegion(chr3, 200L, 299L)
+
+    val k1 = (chr1, region1)
+    val k2 = (chr2, region2)
+    val k3 = (chr3, region3)
 
     var intArr = Array(k1, k2, k3)
-    var intArrRDD: RDD[(String, Interval[Long])] = sc.parallelize(intArr)
+    var intArrRDD: RDD[(String, ReferenceRegion)] = sc.parallelize(intArr)
 
     //creating data
     val v1 = "data for person 1, recordval1 0-99"
@@ -124,14 +138,15 @@ class IntervalRDDSuite extends FunSuite  {
     val rec1: (String, String) = ("person1", v1)
     val rec2: (String, String) = ("person2", v2)
     val rec3: (String, String) = ("person3", v3)
+
     var recArr: Array[(String, String)] = Array(rec1, rec2, rec3)
     var recArrRDD: RDD[(String, String)] = sc.parallelize(recArr)
-    var zipped: RDD[((String, Interval[Long]), (String, String))] = intArrRDD.zip(recArrRDD)
+    var zipped: RDD[((String, ReferenceRegion), (String, String))] = intArrRDD.zip(recArrRDD)
 
     //initializing IntervalRDD with certain values
-    var testRDD: IntervalRDD[String, Interval[Long], String, String] = IntervalRDD(zipped)
+    var testRDD: IntervalRDD[ReferenceRegion, String, String] = IntervalRDD(zipped)
 
-    intArr = Array(("chr1", int2), ("chr2", int3))
+    intArr = Array(("chr1", region2), ("chr2", region3))
     intArrRDD = sc.parallelize(intArr)
 
     val v4 = "data for person 1, recordval 100 - 199"
@@ -144,9 +159,9 @@ class IntervalRDDSuite extends FunSuite  {
     recArrRDD = sc.parallelize(recArr)
     zipped = intArrRDD.zip(recArrRDD)
 
-    val newRDD: IntervalRDD[String, Interval[Long], String, String] = testRDD.multiput(zipped)
+    val newRDD: IntervalRDD[ReferenceRegion, String, String] = testRDD.multiput(zipped)
 
-    var mappedResults: Option[Map[Interval[Long], List[(String, String)]]] = newRDD.get("chr2", int3)
+    var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = newRDD.get("chr3", region3)
     var results = mappedResults.get
     println(results)
     assert(results.head._2.head._2 == v5)

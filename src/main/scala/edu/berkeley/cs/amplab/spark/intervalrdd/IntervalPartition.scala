@@ -27,78 +27,77 @@ import org.apache.spark.storage.StorageLevel
 import edu.berkeley.cs.amplab.spark.intervalrdd._
 import com.github.akmorrow13.intervaltree._
 import org.apache.spark.Logging
+import org.bdgenomics.adam.models.ReferenceRegion
 
 // C = chr
 // K = sec key
 // V = data
-class IntervalPartition[C: ClassTag, K: ClassTag, V: ClassTag] 
-	(val chr: C, val intl: Interval[Long], protected val iTree: IntervalTree[K, V]) {
+// TODO: remove generics C
+class IntervalPartition[K: ClassTag, V: ClassTag] 
+	(val chr: String, val region: ReferenceRegion, protected val iTree: IntervalTree[K, V]) {
 
-  def this(chr: C, intl: Interval[Long]) {
-    this(chr, intl, new IntervalTree[K, V]())
+  def this(chr: String, region: ReferenceRegion) {
+    this(chr, region, new IntervalTree[K, V]())
   }
 
   def getTree(): IntervalTree[K, V] = {
     iTree
   }
 
-  def getId(): (C, Interval[Long]) = {
-    (chr, intl)
+  def getId(): (String, ReferenceRegion) = {
+    (chr, region)
   }
 
-
-
-
   protected def withMap
-      (chr: C, intl: Interval[Long], map: IntervalTree[K, V]): IntervalPartition[C, K, V] = {
-    new IntervalPartition(chr, intl, map)
+      (chr: String, region: ReferenceRegion, map: IntervalTree[K, V]): IntervalPartition[K, V] = {
+    new IntervalPartition(chr, region, map)
   }
 
 
    // search by interval, return by (K=id, V=data)
-  def getAll(ks: Iterator[Interval[Long]]): Iterator[(Interval[Long], List[(K, V)])] = 
+  def getAll(ks: Iterator[ReferenceRegion]): Iterator[(ReferenceRegion, List[(K, V)])] = 
    ks.map { k => (k, iTree.search(k))  }
 
    // search by interval, return by (K=id, V=data)
-  def multiget(ks: Iterator[(Interval[Long], List[K])]) : Iterator[(Interval[Long], List[(K, V)])] = 
+  def multiget(ks: Iterator[(ReferenceRegion, List[K])]) : Iterator[(ReferenceRegion, List[(K, V)])] = 
    ks.map { k => (k._1, iTree.search(k._1, k._2))  }
 
   // k = interval
   // U = data: either a (S,V) tuple or List(S,V)
   def multiput(
-      kvs: Iterator[(Interval[Long], List[(K, V)])]): IntervalPartition[C, K, V] = {
+      kvs: Iterator[(ReferenceRegion, List[(K, V)])]): IntervalPartition[K, V] = {
     val newTree = iTree.snapshot()
     for (ku <- kvs) {
       newTree.insert(ku._1, ku._2)
     }
-    this.withMap(chr, intl, newTree)
+    this.withMap(chr, region, newTree)
   }
 
-  def mergePartitions(p: IntervalPartition[C, K, V]): IntervalPartition[C, K, V] = {
+  def mergePartitions(p: IntervalPartition[K, V]): IntervalPartition[K, V] = {
     val newTree = iTree.merge(p.getTree)
-    this.withMap(chr, intl, newTree)
+    this.withMap(chr, region, newTree)
   }
 
 }
 
 private[intervalrdd] object IntervalPartition {
 
-  def apply[C: ClassTag, I: ClassTag, K: ClassTag, V: ClassTag]
-      (iter: Iterator[((C, I), (K, V))]): IntervalPartition[C, K, V] = {
+  def apply[I: ClassTag, K: ClassTag, V: ClassTag]
+      (iter: Iterator[((String, I), (K, V))]): IntervalPartition[K, V] = {
     val map = new IntervalTree[K, V]()
     // TODO: interval should change for partition granularity
-    val intl: Interval[Long] = new Interval(0L, 0L)
+    val region: ReferenceRegion = new ReferenceRegion("", 0L, 0L)
 
     // TODO: this blows!!!!
-    var chr: C = "".asInstanceOf[C]
+    var chr: String = "".asInstanceOf[String]
     iter.foreach { ku =>
-      val chr: C = ku._1._1
+      val chr: String = ku._1._1
       ku._1._2 match {
         // TODO: exception thrown if not Interval
-        case n: Interval[Long] => map.insert(ku._1._2.asInstanceOf[Interval[Long]], ku._2)
+        case n: ReferenceRegion => map.insert(ku._1._2.asInstanceOf[ReferenceRegion], ku._2)
         case _ => println("error") // TODO
       }
     }
-    new IntervalPartition(chr, intl, map)
+    new IntervalPartition(chr, region, map)
   }
 }
