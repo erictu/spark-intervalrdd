@@ -27,6 +27,7 @@ import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.bdgenomics.adam.models.ReferenceRegion
+import org.bdgenomics.adam.rdd.ReferencePartitioner
 
 import scala.collection.mutable.ListBuffer
 
@@ -35,10 +36,10 @@ import com.github.akmorrow13.intervaltree._
 // K = chr, interval
 // S = sec key
 // V = data
-class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
+class IntervalRDD[S: ClassTag, V: ClassTag](
     /** The underlying representation of the IndexedRDD as an RDD of partitions. */
     private val partitionsRDD: RDD[IntervalPartition[S, V]])
-  extends RDD[(K, V)](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) {
+  extends RDD[(V)](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) {
 
   require(partitionsRDD.partitioner.isDefined)
 
@@ -57,26 +58,24 @@ class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
   */
 
   /** Provides the `RDD[(K, V)]` equivalent output. */
-  override def compute(part: Partition, context: TaskContext): Iterator[(K, V)] = {
+  override def compute(part: Partition, context: TaskContext): Iterator[V] = {
     // TODO
     null
   }
 
-  // TODO replace Interval Type with K
-  def get(chr: String, region: ReferenceRegion, k: S): Option[Map[ReferenceRegion, List[(S, V)]]] = multiget(chr, region, Option(List(k)))
+  def get(region: ReferenceRegion, k: S): Option[Map[ReferenceRegion, List[(S, V)]]] = multiget(region, Option(List(k)))
 
   // Gets values corresponding to a single interval over multiple ids
-  def get(chr: String, region: ReferenceRegion): Option[Map[ReferenceRegion, List[(S, V)]]] = multiget(chr, region, None)
+  def get(region: ReferenceRegion): Option[Map[ReferenceRegion, List[(S, V)]]] = multiget(region, None)
 
   /** Gets the values corresponding to the specified key, if any 
   * Assume that we're only getting data that exists (if it doesn't exist,
   * would have been handled by upper LazyMaterialization layer
   */
   // TODO: this is not multiget, can only pull from 1 partition
-  def multiget(chr: String, region: ReferenceRegion, ks: Option[List[S]]): Option[Map[ReferenceRegion, List[(S, V)]]] = { 
+  def multiget(region: ReferenceRegion, ks: Option[List[S]]): Option[Map[ReferenceRegion, List[(S, V)]]] = { 
 
-    val k = (chr, region)
-    val ksByPartition: Int = partitioner.get.getPartition(k)
+    val ksByPartition: Int = partitioner.get.getPartition(region)
     val partitions: Seq[Int] = Array(ksByPartition).toSeq
 
     val results: Array[Array[(ReferenceRegion, List[(S, V)])]] = context.runJob(partitionsRDD,
@@ -113,9 +112,9 @@ class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
    * var dataRDD: RDD[(ReferenceRegion, (Long, AlignmentRecord)] =  entityValRDD.zip(idsRDD)
    * intervalRDD.multiput("chrM", new Interval(viewRegion.start, viewRegion.end), dataRDD)
    */
-  def multiput(kvs: RDD[((String,K), (S,V))]): IntervalRDD[K, S, V] = {
+  def multiput(kvs: RDD[(ReferenceRegion, (S,V))]): IntervalRDD[S, V] = {
 
-    val newData: RDD[((String, K), (S,V))] = kvs.partitionBy(partitionsRDD.partitioner.get)
+    val newData: RDD[(ReferenceRegion, (S,V))] = kvs.partitionBy(partitionsRDD.partitioner.get)
 
     var partitionList: ListBuffer[Long] = new ListBuffer[Long]()
 
@@ -127,7 +126,7 @@ class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
       }, preservesPartitioning = true)
 
     // merge the new partitions with existing partitions
-    val merger = new PartitionMerger[K,S,V]()
+    val merger = new PartitionMerger[S, V]()
     val newPartitionsRDD = partitionsRDD.zipPartitions(convertedPartitions, true)((aiter, biter) => merger(aiter, biter))
 
     new IntervalRDD(newPartitionsRDD)
@@ -136,7 +135,7 @@ class IntervalRDD[K: ClassTag, S: ClassTag, V: ClassTag](
 
 }
 
-class PartitionMerger[K: ClassTag, S: ClassTag, V: ClassTag]() extends Serializable {
+class PartitionMerger[S: ClassTag, V: ClassTag]() extends Serializable {
   def apply(thisIter: Iterator[IntervalPartition[S, V]], otherIter: Iterator[IntervalPartition[S, V]]): Iterator[IntervalPartition[S, V]] = {
     // TODO: dont merge so much!
     var res: ListBuffer[IntervalPartition[S, V]] = new ListBuffer[IntervalPartition[S, V]]()
@@ -148,12 +147,12 @@ class PartitionMerger[K: ClassTag, S: ClassTag, V: ClassTag]() extends Serializa
       if (thisIter.hasNext) {
         thisPart = thisIter.next
       }
-
-      if (otherPart.getId == thisPart.getId) {
-        res += thisPart.mergePartitions(otherPart)
-      } else {
+      // TODO: reimplement merger
+      // if (otherPart.getId == thisPart.getId) {
+      //   res += thisPart.mergePartitions(otherPart)
+      // } else {
         res += otherPart
-      }
+      //}
     }
 
     while(thisIter.hasNext) {
@@ -163,42 +162,21 @@ class PartitionMerger[K: ClassTag, S: ClassTag, V: ClassTag]() extends Serializa
   }
 }
 
-class ChrPartitioner[C, K](
-    partitions: Int)
-  extends Partitioner {
-
- private val hash = new HashPartitioner(partitions)
-
- def numPartitions: Int = partitions
-
-  def getPartition(k: Any): Int = {
-    val tuple = k.asInstanceOf[(C, K)]
-    hash.getPartition(tuple)
-  }
-
-} 
-
 object IntervalRDD {
   /**
   * Constructs an updatable IntervalRDD from an RDD of a BDGFormat where partitioned by chromosome
   */
-  def apply[K: ClassTag, S: ClassTag, V: ClassTag](elems: RDD[((String, K), (S, V))]) : IntervalRDD[K, S, V] = {
+  def apply[S: ClassTag, V: ClassTag](elems: RDD[(ReferenceRegion, (S, V))]) : IntervalRDD[S, V] = {
     val partitioned = 
       if (elems.partitioner.isDefined) elems
-      // TODO: this may not work for different chromosomes, may map to same partitions
       else {
-        println("partitioner size ", elems.partitioner.size)
-        assert(elems.partitions.size > 0)
-        // consider repartitionAndSortWithinPartitions instead of partitionBy
-        elems.partitionBy(new ChrPartitioner(elems.partitioner.size)) 
+        // TODO: turn into sequence dictionary
+        elems.partitionBy(new ReferencePartitioner(null)) 
       }
     val convertedPartitions: RDD[IntervalPartition[S, V]] = partitioned.mapPartitions[IntervalPartition[S, V]]( 
       iter => Iterator(IntervalPartition(iter)), 
       preservesPartitioning = true)
 
-    println("converted partitions")
-    println(convertedPartitions.collect())
-    // collect all data in partitions
     new IntervalRDD(convertedPartitions) 
   }
 }

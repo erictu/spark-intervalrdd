@@ -28,7 +28,7 @@ class IntervalPartitionSuite extends FunSuite  {
 
 
 	test("create new partition") {
-		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]("chr1", new ReferenceRegion("chrM", 0L, 0L))
+		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
 		assert(partition != null)
 	}
 
@@ -41,7 +41,7 @@ class IntervalPartitionSuite extends FunSuite  {
 		val read2 = (1L,4L)
 
 
-		val iter = Iterator(((chr, region1), read1), ((chr, region2), read1))
+		val iter = Iterator((region1, read1), (region2, read1))
 		val partition = IntervalPartition(iter)
 		assert(partition != null)
 	}
@@ -57,7 +57,7 @@ class IntervalPartitionSuite extends FunSuite  {
 		val read3 = (2L, 2L)
 		val read4 =  (2L, 500L)
 
-		val iter = Iterator(((chr1, region1), read1), ((chr1, region2), read2), ((chr1, region1), read3), ((chr1, region2), read4))
+		val iter = Iterator((region1, read1), (region2, read2), (region1, read3), (region2, read4))
 		val partition = IntervalPartition(iter)
 
 		val results = partition.getAll(Iterator(region1, region2))
@@ -84,7 +84,7 @@ class IntervalPartitionSuite extends FunSuite  {
 		val read3 = (2L, 2L)
 		val read4 =  (2L, 500L)
 
-		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]("chr1", new ReferenceRegion(chr1, 0L, 0L))
+		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
 		val iter = Iterator((region1, List(read1, read3)), (region2, List(read2, read4)))
 
 		val newPartition = partition.multiput(iter)
@@ -115,7 +115,7 @@ class IntervalPartitionSuite extends FunSuite  {
 		val read4 =  (2L, 500L)
 
 		// TODO: remove chr, already specified in region
-		val iter = Iterator(((chr1, region1), read1), ((chr1, region2), read2), ((chr1, region1), read3), ((chr1, region2), read4))
+		val iter = Iterator((region1, read1), (region2, read2), (region1, read3), (region2, read4))
 		val partition = IntervalPartition(iter)
 
 		val results = partition.multiget(Iterator((region1, List(1L)),(region2, List(1L, 2L))))
