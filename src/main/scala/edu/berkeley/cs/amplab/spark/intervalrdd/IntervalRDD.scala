@@ -28,6 +28,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.bdgenomics.adam.models.ReferenceRegion
 import org.bdgenomics.adam.rdd.ReferencePartitioner
+import org.bdgenomics.adam.models.SequenceDictionary
 
 import scala.collection.mutable.ListBuffer
 
@@ -165,13 +166,14 @@ class PartitionMerger[S: ClassTag, V: ClassTag]() extends Serializable {
 object IntervalRDD {
   /**
   * Constructs an updatable IntervalRDD from an RDD of a BDGFormat where partitioned by chromosome
+  * TODO: Support different partitioners
   */
-  def apply[S: ClassTag, V: ClassTag](elems: RDD[(ReferenceRegion, (S, V))]) : IntervalRDD[S, V] = {
+  def apply[S: ClassTag, V: ClassTag](elems: RDD[(ReferenceRegion, (S, V))], dict: SequenceDictionary) : IntervalRDD[S, V] = {
     val partitioned = 
       if (elems.partitioner.isDefined) elems
       else {
         // TODO: turn into sequence dictionary
-        elems.partitionBy(new ReferencePartitioner(null)) 
+        elems.partitionBy(new ReferencePartitioner(dict)) 
       }
     val convertedPartitions: RDD[IntervalPartition[S, V]] = partitioned.mapPartitions[IntervalPartition[S, V]]( 
       iter => Iterator(IntervalPartition(iter)), 

@@ -30,7 +30,7 @@ import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite
 import org.scalatest.Matchers
-import org.bdgenomics.adam.models.ReferenceRegion
+import org.bdgenomics.adam.models.{ ReferenceRegion, SequenceRecord, SequenceDictionary }
 
 class IntervalRDDSuite extends FunSuite  {
 
@@ -56,7 +56,20 @@ class IntervalRDDSuite extends FunSuite  {
     var intArrRDD: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(intArr)
 
     //initializing IntervalRDD with certain values
-    var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD)
+    //TODO: To get sequence dictionary, we need to use ADAMContext.adamDictionaryLoad(filePath)
+      //So for now, let's just create one out of scratch
+    //TODO: how to add to the sequence dictionary after making it?
+      //Use SequenceDictionary.+ and SequenceDictionary.++, reset it to remake the partitioner each time
+      //By each time, we mean each time we load in a new file. Should we support this or just assume 
+      //We specify everything at the start of running?
+    // val sd = new SequenceDictionary()
+    //TODO: eventually we need not just alignment
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L), 
+      SequenceRecord("chr3", 1000L))) //NOTE: the number is the length of the chromosome
+
+    var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
 
     assert(1 == 1)
 
@@ -79,10 +92,15 @@ class IntervalRDDSuite extends FunSuite  {
     var intArr = Array((region1, rec1), (region2, rec2), (region3, rec3))
     var intArrRDD: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(intArr)
 
+    //See TODO flags above
     //initializing IntervalRDD with certain values
-    var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD)
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
+
+    var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
     
-    var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region2)
+    var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region1)
     var results = mappedResults.get
     assert(results.head._2.head._2 == rec1._2)
 
@@ -109,8 +127,13 @@ class IntervalRDDSuite extends FunSuite  {
     var intArr = Array((region1, rec1), (region2, rec2), (region3, rec3))
     var intArrRDD: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(intArr)
 
+    //See TODO flags above
     //initializing IntervalRDD with certain values
-    var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD)
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
+
+    var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
 
 
     val v4 = "data for person 1, recordval 100 - 199"
