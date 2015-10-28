@@ -35,6 +35,13 @@ import scala.collection.mutable.ListBuffer
 
 import com.github.akmorrow13.intervaltree._
 
+
+object IntervalTimers extends Metrics {
+  val MultigetTime = timer("Multiget timer")
+  val MultiputTime = timer("Multiput timer")
+  val InitTime = timer("Initialize RDD")
+}
+
 // K = chr, interval
 // S = sec key
 // V = data
@@ -75,7 +82,7 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
   * would have been handled by upper LazyMaterialization layer
   */
   // TODO: this is not multiget, can only pull from 1 partition
-  def multiget(region: ReferenceRegion, ks: Option[List[S]]): Option[Map[ReferenceRegion, List[(S, V)]]] = { 
+  def multiget(region: ReferenceRegion, ks: Option[List[S]]): Option[Map[ReferenceRegion, List[(S, V)]]] = IntervalTimers.MultigetTime.time{ 
 
     val ksByPartition: Int = partitioner.get.getPartition(region)
     val partitions: Seq[Int] = Array(ksByPartition).toSeq
@@ -114,7 +121,7 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
    * var dataRDD: RDD[(ReferenceRegion, (Long, AlignmentRecord)] =  entityValRDD.zip(idsRDD)
    * intervalRDD.multiput("chrM", new Interval(viewRegion.start, viewRegion.end), dataRDD)
    */
-  def multiput(kvs: RDD[(ReferenceRegion, (S,V))]): IntervalRDD[S, V] = {
+  def multiput(kvs: RDD[(ReferenceRegion, (S,V))]): IntervalRDD[S, V] = IntervalTimers.MultiputTime.time{
 
     val newData: RDD[(ReferenceRegion, (S,V))] = kvs.partitionBy(partitionsRDD.partitioner.get)
 
@@ -169,7 +176,7 @@ object IntervalRDD {
   * Constructs an updatable IntervalRDD from an RDD of a BDGFormat where partitioned by chromosome
   * TODO: Support different partitioners
   */
-  def apply[S: ClassTag, V: ClassTag](elems: RDD[(ReferenceRegion, (S, V))], dict: SequenceDictionary) : IntervalRDD[S, V] = {
+  def apply[S: ClassTag, V: ClassTag](elems: RDD[(ReferenceRegion, (S, V))], dict: SequenceDictionary) : IntervalRDD[S, V] = IntervalTimers.InitTime.time{
     val partitioned = 
       if (elems.partitioner.isDefined) elems
       else {

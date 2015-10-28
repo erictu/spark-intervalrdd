@@ -38,10 +38,13 @@ import java.io.StringWriter
 import java.io.OutputStreamWriter
 import org.bdgenomics.adam.util.ADAMFunSuite
 class IntervalRDDSuite extends ADAMFunSuite with Logging {
-  
+
   val partitions = 100 
 
   sparkTest("create IntervalRDD from RDD using apply") {
+    val metricsListener = new MetricsListener(new RecordedMetrics())
+    sc.addSparkListener(metricsListener) //Uncommenting this makes sc shutdown
+    Metrics.initialize(sc)
 
     val chr1 = "chr1"
     val chr2 = "chr2"
@@ -74,11 +77,18 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
     var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
 
+    val writer = new PrintWriter(new OutputStreamWriter(System.out, "UTF-8"))
+    Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
+    writer.close()
+
     assert(1 == 1)
 
   }
 
   sparkTest("get one interval, k value") {
+    val metricsListener = new MetricsListener(new RecordedMetrics())
+    sc.addSparkListener(metricsListener)
+    Metrics.initialize(sc)
 
     val chr1 = "chr1"
     val chr2 = "chr2"
@@ -109,11 +119,19 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
     mappedResults = testRDD.get(region3)
     results = mappedResults.get
+
+    val writer = new PrintWriter(new OutputStreamWriter(System.out, "UTF-8"))
+    Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
+    writer.close()
+
     assert(results.head._2.head._2 == rec3._2)
 
   }
 
   sparkTest("put multiple intervals into RDD to existing chromosome") {
+    // val metricsListener = new MetricsListener(new RecordedMetrics())
+    // // sc.addSparkListener(metricsListener)
+    // Metrics.initialize(sc)
 
     val chr1 = "chr1"
     val chr2 = "chr2"
@@ -154,6 +172,11 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
     var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = newRDD.get(region3)
     var results = mappedResults.get
     println(results)
+
+    // val writer = new PrintWriter(new OutputStreamWriter(System.out, "UTF-8"))
+    // Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
+    // writer.close()
+
     assert(results.head._2.head._2 == rec5._2)
   }
 
