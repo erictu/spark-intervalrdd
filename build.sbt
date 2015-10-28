@@ -6,11 +6,11 @@ organization := "edu.berkeley.cs.amplab"
 
 scalaVersion := "2.10.4"
 
-libraryDependencies += "org.apache.spark" %% "spark-core" % "1.5.0"
+libraryDependencies += "org.apache.spark" %% "spark-core" % "1.4.0"
 
 //spName := := "amplab/spark-intervalrdd"
 
-//sparkVersion := "1.5.0"
+//sparkVersion := "1.4.0"
 
 //sparkComponents += "core"
 

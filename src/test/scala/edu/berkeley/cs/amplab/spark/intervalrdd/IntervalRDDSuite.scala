@@ -79,7 +79,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
     val writer = new PrintWriter(new OutputStreamWriter(System.out, "UTF-8"))
     Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
-    writer.close()
+    writer.flush()
 
     assert(1 == 1)
 
@@ -122,16 +122,16 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
     val writer = new PrintWriter(new OutputStreamWriter(System.out, "UTF-8"))
     Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
-    writer.close()
+    writer.flush()
 
     assert(results.head._2.head._2 == rec3._2)
 
   }
 
   sparkTest("put multiple intervals into RDD to existing chromosome") {
-    // val metricsListener = new MetricsListener(new RecordedMetrics())
-    // // sc.addSparkListener(metricsListener)
-    // Metrics.initialize(sc)
+    val metricsListener = new MetricsListener(new RecordedMetrics())
+    sc.addSparkListener(metricsListener)
+    Metrics.initialize(sc)
 
     val chr1 = "chr1"
     val chr2 = "chr2"
@@ -173,11 +173,12 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
     var results = mappedResults.get
     println(results)
 
-    // val writer = new PrintWriter(new OutputStreamWriter(System.out, "UTF-8"))
-    // Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
-    // writer.close()
+    val writer = new PrintWriter(new OutputStreamWriter(System.out, "UTF-8"))
+    Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
+    writer.flush()
 
     assert(results.head._2.head._2 == rec5._2)
+
   }
 
 
