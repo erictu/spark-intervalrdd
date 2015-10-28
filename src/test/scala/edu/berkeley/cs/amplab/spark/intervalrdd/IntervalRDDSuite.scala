@@ -24,21 +24,24 @@ import org.apache.spark.HashPartitioner
 
 import com.github.akmorrow13.intervaltree._
 import org.scalatest._
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
+import org.apache.spark.{ SparkConf, Logging, SparkContext }
 import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite
 import org.scalatest.Matchers
 import org.bdgenomics.adam.models.{ ReferenceRegion, SequenceRecord, SequenceDictionary }
-
-class IntervalRDDSuite extends FunSuite  {
-
-  var conf = new SparkConf(false)
-  var sc = new SparkContext("local", "test", conf)
+import org.bdgenomics.utils.instrumentation.Metrics
+import org.bdgenomics.utils.instrumentation.{RecordedMetrics, MetricsListener}
+import org.apache.spark.rdd.MetricsContext._
+import java.io.PrintWriter
+import java.io.StringWriter
+import java.io.OutputStreamWriter
+import org.bdgenomics.adam.util.ADAMFunSuite
+class IntervalRDDSuite extends ADAMFunSuite with Logging {
+  
   val partitions = 100 
 
-  test("create IntervalRDD from RDD using apply") {
+  sparkTest("create IntervalRDD from RDD using apply") {
 
     val chr1 = "chr1"
     val chr2 = "chr2"
@@ -75,7 +78,7 @@ class IntervalRDDSuite extends FunSuite  {
 
   }
 
-  test("get one interval, k value") {
+  sparkTest("get one interval, k value") {
 
     val chr1 = "chr1"
     val chr2 = "chr2"
@@ -110,7 +113,7 @@ class IntervalRDDSuite extends FunSuite  {
 
   }
 
-  test("put multiple intervals into RDD to existing chromosome") {
+  sparkTest("put multiple intervals into RDD to existing chromosome") {
 
     val chr1 = "chr1"
     val chr2 = "chr2"

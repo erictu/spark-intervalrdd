@@ -29,6 +29,7 @@ import org.apache.spark.storage.StorageLevel
 import org.bdgenomics.adam.models.ReferenceRegion
 import org.bdgenomics.adam.rdd.ReferencePartitioner
 import org.bdgenomics.adam.models.SequenceDictionary
+import org.bdgenomics.utils.instrumentation.Metrics
 
 import scala.collection.mutable.ListBuffer
 
