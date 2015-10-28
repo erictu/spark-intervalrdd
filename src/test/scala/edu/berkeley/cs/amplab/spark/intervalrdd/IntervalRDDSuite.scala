@@ -77,9 +77,13 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
     var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
 
-    val writer = new PrintWriter(new OutputStreamWriter(System.out, "UTF-8"))
+    val stringWriter = new StringWriter()
+    val writer = new PrintWriter(stringWriter)
     Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
     writer.flush()
+    val timings = stringWriter.getBuffer.toString
+    println(timings)
+    logInfo(timings)
 
     assert(1 == 1)
 
@@ -120,9 +124,13 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
     mappedResults = testRDD.get(region3)
     results = mappedResults.get
 
-    val writer = new PrintWriter(new OutputStreamWriter(System.out, "UTF-8"))
+    val stringWriter = new StringWriter()
+    val writer = new PrintWriter(stringWriter)
     Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
     writer.flush()
+    val timings = stringWriter.getBuffer.toString
+    println(timings)
+    logInfo(timings)
 
     assert(results.head._2.head._2 == rec3._2)
 
@@ -173,9 +181,13 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
     var results = mappedResults.get
     println(results)
 
-    val writer = new PrintWriter(new OutputStreamWriter(System.out, "UTF-8"))
+    val stringWriter = new StringWriter()
+    val writer = new PrintWriter(stringWriter)
     Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
     writer.flush()
+    val timings = stringWriter.getBuffer.toString
+    println(timings)
+    logInfo(timings)
 
     assert(results.head._2.head._2 == rec5._2)
 

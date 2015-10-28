@@ -22,7 +22,7 @@ import scala.reflect.ClassTag
 import org.apache.spark.Dependency
 import org.apache.spark.Partition
 import org.apache.spark._
-import org.apache.spark.SparkContext
+import org.apache.spark.{ SparkConf, Logging, SparkContext }
 import org.apache.spark.TaskContext
 import org.apache.spark.rdd.MetricsContext._
 import org.apache.spark.rdd.RDD
@@ -49,7 +49,7 @@ object IntervalTimers extends Metrics {
 class IntervalRDD[S: ClassTag, V: ClassTag](
     /** The underlying representation of the IndexedRDD as an RDD of partitions. */
     private val partitionsRDD: RDD[IntervalPartition[S, V]])
-  extends RDD[(V)](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) {
+  extends RDD[(V)](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) with Logging {
 
   require(partitionsRDD.partitioner.isDefined)
 
@@ -145,7 +145,7 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
 
 }
 
-class PartitionMerger[S: ClassTag, V: ClassTag]() extends Serializable {
+class PartitionMerger[S: ClassTag, V: ClassTag]() extends Serializable with Logging {
   def apply(thisIter: Iterator[IntervalPartition[S, V]], otherIter: Iterator[IntervalPartition[S, V]]): Iterator[IntervalPartition[S, V]] = {
     // TODO: dont merge so much!
     var res: ListBuffer[IntervalPartition[S, V]] = new ListBuffer[IntervalPartition[S, V]]()
@@ -172,7 +172,7 @@ class PartitionMerger[S: ClassTag, V: ClassTag]() extends Serializable {
   }
 }
 
-object IntervalRDD {
+object IntervalRDD extends Logging {
   /**
   * Constructs an updatable IntervalRDD from an RDD of a BDGFormat where partitioned by chromosome
   * TODO: Support different partitioners
