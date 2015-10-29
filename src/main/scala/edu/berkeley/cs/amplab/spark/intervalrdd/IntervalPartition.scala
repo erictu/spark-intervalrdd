@@ -58,7 +58,8 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
 
    // search by interval, return by (K=id, V=data)
   def multiget(ks: Iterator[(ReferenceRegion, List[K])]) : Iterator[(ReferenceRegion, List[(K, V)])] = 
-   filterByRegion(ks.map { k => (k._1, iTree.search(k._1, k._2))  })
+    filterByRegion(ks.map { k => (k._1, iTree.search(k._1, k._2))  })
+
 
   def multiput(
       kvs: Iterator[(ReferenceRegion, List[(K, V)])]): IntervalPartition[K, V] = {
@@ -87,10 +88,11 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
         })
         newIter += ((i._1, data.asInstanceOf[ListBuffer[(K, V)]].toList))
       }
+      newIter.toIterator
     } else {
-      println("Type not supported for filtering by Interval Partition")
+      println("Type not supported for filtering by Interval Partition. Data not filtered")
+      iter
     }
-    newIter.toIterator
   }
 
 }
