@@ -73,7 +73,6 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
   * Assume that we're only getting data that exists (if it doesn't exist,
   * would have been handled by upper LazyMaterialization layer
   */
-  // TODO: this is not multiget, can only pull from 1 partition
   def multiget(region: ReferenceRegion, ks: Option[List[S]]): Option[Map[ReferenceRegion, List[(S, V)]]] = { 
 
     val ksByPartition: Int = partitioner.get.getPartition(region)

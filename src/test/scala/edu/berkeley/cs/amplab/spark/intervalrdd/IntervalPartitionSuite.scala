@@ -26,7 +26,6 @@ import org.scalatest.Matchers
 
 class IntervalPartitionSuite extends FunSuite  {
 
-
 	test("create new partition") {
 		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
 		assert(partition != null)
@@ -77,7 +76,7 @@ class IntervalPartitionSuite extends FunSuite  {
 
 		val chr1 = "chr1"
 		val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
-		val region2: ReferenceRegion = new ReferenceRegion(chr1,100L, 199L)
+		val region2: ReferenceRegion = new ReferenceRegion(chr1, 100L, 199L)
 
 		val read1 = (1L,2L)
 		val read2 = (1L,500L)
@@ -111,14 +110,13 @@ class IntervalPartitionSuite extends FunSuite  {
 
 		val read1 = (1L,2L)
 		val read2 = (1L,500L)
-		val read3 = (2L, 2L)
+		val read3 = (2L, 6L)
 		val read4 =  (2L, 500L)
 
-		// TODO: remove chr, already specified in region
 		val iter = Iterator((region1, read1), (region2, read2), (region1, read3), (region2, read4))
 		val partition = IntervalPartition(iter)
 
-		val results = partition.multiget(Iterator((region1, List(1L)),(region2, List(1L, 2L))))
+		val results = partition.multiget(Iterator((region1, List(1L)), (region2, List(1L, 2L))))
 
 	    for (ku <- results) {
 	    	if (ku._1.equals(region1)) {
@@ -131,6 +129,10 @@ class IntervalPartitionSuite extends FunSuite  {
 				assert(ku._2.contains(read4))
 			}
 	    }
+	}
+
+	test("multiput") {
+		// TODO
 	}
 
 }
