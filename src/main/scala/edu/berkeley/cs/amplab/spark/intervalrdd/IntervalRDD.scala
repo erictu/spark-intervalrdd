@@ -172,7 +172,6 @@ object IntervalRDD {
     val partitioned = 
       if (elems.partitioner.isDefined) elems
       else {
-        // TODO: turn into sequence dictionary
         elems.partitionBy(new ReferencePartitioner(dict)) 
       }
     val convertedPartitions: RDD[IntervalPartition[S, V]] = partitioned.mapPartitions[IntervalPartition[S, V]]( 
