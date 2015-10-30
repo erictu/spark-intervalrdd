@@ -92,10 +92,12 @@ class IntervalPartitionSuite extends FunSuite  {
 		val results = newPartition.getAll(Iterator(region1, region2))
 	    for (ku <- results) {
 	      if (ku._1.equals(region1)) {
+	      	assert(ku._2.size == 2)
 	      	assert(ku._2.contains(read1))
 	      	assert(ku._2.contains(read3))
 	      }
 	      if (ku._1.equals(region2)) {
+	      	assert(ku._2.size == 2)
 	      	assert(ku._2.contains(read2))
 	      	assert(ku._2.contains(read4))
 	      }
@@ -131,8 +133,66 @@ class IntervalPartitionSuite extends FunSuite  {
 	    }
 	}
 
-	test("multiput") {
-		// TODO
+	test("putting differing number of reads into different regions") {
+		val chr1 = "chr1"
+		val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
+		val region2: ReferenceRegion = new ReferenceRegion(chr1, 100L, 199L)
+
+		val read1 = (1L,2L)
+		val read2 = (1L,500L)
+		val read3 = (2L, 2L)
+		val read4 = (2L, 500L)
+		val read5 = (3L, 500L)
+
+		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
+		val iter = Iterator((region1, List(read1, read3)), (region2, List(read2, read4, read5)))
+
+		val newPartition = partition.multiput(iter)
+
+		// assert values are in the new partition
+		val results = newPartition.getAll(Iterator(region1, region2))
+	    for (ku <- results) {
+	      if (ku._1.equals(region1)) {
+	      	assert(ku._2.size == 2)
+	      	assert(ku._2.contains(read1))
+	      	assert(ku._2.contains(read3))
+	      }
+	      if (ku._1.equals(region2)) {
+	      	assert(ku._2.size == 3)
+	      	assert(ku._2.contains(read2))
+	      	assert(ku._2.contains(read4))
+	      }
+	    }
+
+	}
+
+
+	test("putting then getting a region that overlaps 3 regions") {
+		val chr1 = "chr1"
+		val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
+		val region2: ReferenceRegion = new ReferenceRegion(chr1, 100L, 199L)
+		val region3: ReferenceRegion = new ReferenceRegion(chr1, 150L, 300L)
+		val region4: ReferenceRegion = new ReferenceRegion(chr1, 350L, 700L)
+
+		val read1 = (1L,2L)
+		val read2 = (1L,500L)
+		val read3 = (2L, 2L)
+		val read4 = (2L, 500L)
+		val read5 = (3L, 500L)
+		val read6 = (4L, 250L)
+
+		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
+		val iter = Iterator((region1, List(read1, read3)), (region2, List(read2, read4)), (region3, List(read5)), (region4, List(read6)))
+
+		val newPartition = partition.multiput(iter)
+
+		val overlapReg: ReferenceRegion = new ReferenceRegion(chr1, 0L, 200L)
+		// assert values are in the new partition
+		val results = newPartition.getAll(Iterator(overlapReg))
+	    for (ku <- results) {
+	    	assert(ku._2.size == 5)
+	    }
+
 	}
 
 }

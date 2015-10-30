@@ -2,4 +2,4 @@ project/target/
 target/
 bin/
 .DS_Store
-.log
+adam.log

@@ -124,49 +124,90 @@ class IntervalRDDSuite extends FunSuite  {
     assert(results.get(region1).get.size == 3)
   }
 
-  // test("put multiple intervals into RDD to existing chromosome") {
+  test("put multiple intervals into RDD to existing chromosome") {
 
-  //   val chr1 = "chr1"
-  //   val chr2 = "chr2"
-  //   val chr3 = "chr3"
-  //   val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
-  //   val region2: ReferenceRegion = new ReferenceRegion(chr2, 100L, 199L)
-  //   val region3: ReferenceRegion = new ReferenceRegion(chr3, 200L, 299L)
+    val chr1 = "chr1"
+    val chr2 = "chr2"
+    val chr3 = "chr3"
+    val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
+    val region2: ReferenceRegion = new ReferenceRegion(chr2, 100L, 199L)
+    val region3: ReferenceRegion = new ReferenceRegion(chr3, 200L, 299L)
 
-  //   //creating data
-  //   val rec1: (String, String) = ("person1", "data for person 1, recordval1 0-99")
-  //   val rec2: (String, String) = ("person2", "data for person 2, recordval2 100-199")
-  //   val rec3: (String, String) = ("person3", "data for person 3, recordval3 200-299")
+    //creating data
+    val rec1: (String, String) = ("person1", "data for person 1, recordval1 0-99")
+    val rec2: (String, String) = ("person2", "data for person 2, recordval2 100-199")
+    val rec3: (String, String) = ("person3", "data for person 3, recordval3 200-299")
 
-  //   var intArr = Array((region1, rec1), (region2, rec2), (region3, rec3))
-  //   var intArrRDD: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(intArr)
+    var intArr = Array((region1, rec1), (region2, rec2), (region3, rec3))
+    var intArrRDD: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(intArr)
 
-  //   //See TODO flags above
-  //   //initializing IntervalRDD with certain values
-  //   val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
-  //     SequenceRecord("chr2", 1000L),
-  //     SequenceRecord("chr3", 1000L)))
+    //See TODO flags above
+    //initializing IntervalRDD with certain values
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
 
-  //   var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
-
-
-  //   val v4 = "data for person 1, recordval 100 - 199"
-  //   val v5 = "data for person 2, recordval 200 - 299"
-
-  //   val rec4: (String, String) = ("person1", v4)
-  //   val rec5: (String, String) = ("person2", v5)
-
-  //   intArr = Array((region2, rec4), (region3, rec5))
-  //   val zipped = sc.parallelize(intArr)
+    var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
 
 
-  //   val newRDD: IntervalRDD[String, String] = testRDD.multiput(zipped)
+    val v4 = "data for person 1, recordval 100 - 199"
+    val v5 = "data for person 2, recordval 200 - 299"
 
-  //   var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = newRDD.get(region3)
-  //   var results = mappedResults.get
-  //   println(results)
-  //   assert(results.head._2.head._2 == rec5._2)
-  // }
+    val rec4: (String, String) = ("person1", v4)
+    val rec5: (String, String) = ("person2", v5)
+
+    intArr = Array((region2, rec4), (region3, rec5))
+    val zipped = sc.parallelize(intArr)
+
+
+    val newRDD: IntervalRDD[String, String] = testRDD.multiput(zipped)
+
+    var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = newRDD.get(region3)
+    var results = mappedResults.get
+    println(results)
+    assert(results.head._2.head._2 == rec5._2)
+  }
+
+
+  test("call put multiple times on reads with same ReferenceRegion") {
+
+    val region: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
+
+    //creating data
+    val rec1: (String, String) = ("per1", "p1 0-99")
+    val rec2: (String, String) = ("per2", "p2 100-199")
+    val rec3: (String, String) = ("per3", "p3 200-299")
+    val rec4: (String, String) = ("per4", "p4 100-199")
+    val rec5: (String, String) = ("per5", "p5 200-299")
+    val rec6: (String, String) = ("per6", "p6 300-399")
+
+    var intArr = Array((region, rec1), (region, rec2), (region, rec3))
+    var intArrRDD: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(intArr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L)))
+
+    var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
+
+    //constructing RDDs to put in
+    val onePutInput = Array((region, rec4), (region, rec5))
+    val zipped: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(onePutInput)
+
+    val twoPutInput = Array((region, rec6))
+    val zipped2: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(twoPutInput)
+
+    // Call Put twice
+    val onePutRDD: IntervalRDD[String, String] = testRDD.multiput(zipped)
+    val twoPutRDD: IntervalRDD[String, String] = onePutRDD.multiput(zipped2)
+
+    var resultsOrig: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region)
+    var resultsOne: Option[Map[ReferenceRegion, List[(String, String)]]] = onePutRDD.get(region)
+    var resultsTwo: Option[Map[ReferenceRegion, List[(String, String)]]] = twoPutRDD.get(region)
+
+    assert(resultsOrig.get.head._2.size == 3) //size of results for the one region we queried
+    assert(resultsOne.get.head._2.size == 5) //size after adding two records
+    assert(resultsTwo.get.head._2.size == 6) //size after adding another record
+  }
+
 
 
 }
