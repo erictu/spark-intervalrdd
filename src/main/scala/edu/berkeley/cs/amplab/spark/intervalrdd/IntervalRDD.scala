@@ -64,6 +64,13 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
     null
   }
 
+  def dumpPartitions() = {
+    println("Partition Dump")
+    partitionsRDD.foreachPartition(
+      part => part.asInstanceOf[IntervalPartition[S, V]].getTree().printNodes
+    )
+  }
+
   def get(region: ReferenceRegion, k: S): Option[Map[ReferenceRegion, List[(S, V)]]] = multiget(region, Option(List(k)))
 
   // Gets values corresponding to a single interval over multiple ids
@@ -93,42 +100,25 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
     Option(results.flatten.toMap)
   }
 
-  /**
-   * Unconditionally updates the specified key to have the specified value. Returns a new IntervalRDD
-   * that reflects the modification.
-   */
-  // def put(chr: String, region: ReferenceRegion, k: K, v: V): IntervalRDD[K, V] = multiput(chr, region, Map(k -> v)) 
 
   /**
    * Unconditionally updates the specified keys to have the specified value. Returns a new IntervalRDD
-   * that reflects the modification.
-   * K is entityId, maps to V, which is the values
-   * workflow should be the below: to be handled in upper layer?
-   * var viewRegion = ReferenceRegion(0, 100)
-   * var readsRDD: RDD[AlignmentRecord] = sc.loadAlignments("../workfiles/mouse_chrM.bam")
-   * var idsRDD: RDD[ReferenceRegion = readsRDD.map(new Interval(_.start, _.end))
-   * var entityValRDD = readsRDD.map((_.personId, _))
-   *    MAKE KEY THE INTERVAL SO HASHES INTO CORRECT PARTITION
-   * var dataRDD: RDD[(ReferenceRegion, (Long, AlignmentRecord)] =  entityValRDD.zip(idsRDD)
-   * intervalRDD.multiput("chrM", new Interval(viewRegion.start, viewRegion.end), dataRDD)
-   */
-  def multiput(kvs: RDD[(ReferenceRegion, (S,V))]): IntervalRDD[S, V] = {
-
-    val newData: RDD[(ReferenceRegion, (S,V))] = kvs.partitionBy(partitionsRDD.partitioner.get)
-
-    var partitionList: ListBuffer[Long] = new ListBuffer[Long]()
-
-    // convert all partitions of the original RDD to Interval Partitions
-    val convertedPartitions: RDD[IntervalPartition[S, V]] = newData.mapPartitionsWithIndex( 
-      (idx, iter) => {
-        partitionList += idx 
-        Iterator(IntervalPartition(iter)) 
-      }, preservesPartitioning = true)
+   - outstanding issues: zipPartitions can only work for rdds of the same size
+   - something odd is happening when you try to merge partitions together of different partition keys
+   **/
+  def multiput(elems: RDD[(ReferenceRegion, (S,V))], dict: SequenceDictionary): IntervalRDD[S, V] = {
+    val partitioned = 
+      if (elems.partitioner.isDefined) elems
+      else {
+        elems.partitionBy(new ReferencePartitioner(dict)) 
+      }
+    val convertedPartitions: RDD[IntervalPartition[S, V]] = partitioned.mapPartitions[IntervalPartition[S, V]]( 
+      iter => Iterator(IntervalPartition(iter)), 
+      preservesPartitioning = true)
 
     // merge the new partitions with existing partitions
     val merger = new PartitionMerger[S, V]()
     val newPartitionsRDD = partitionsRDD.zipPartitions(convertedPartitions, true)((aiter, biter) => merger(aiter, biter))
-
     new IntervalRDD(newPartitionsRDD)
 
   }
@@ -136,29 +126,24 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
 }
 
 class PartitionMerger[S: ClassTag, V: ClassTag]() extends Serializable {
-  def apply(thisIter: Iterator[IntervalPartition[S, V]], otherIter: Iterator[IntervalPartition[S, V]]): Iterator[IntervalPartition[S, V]] = {
-    // TODO: dont merge so much!
-    var res: ListBuffer[IntervalPartition[S, V]] = new ListBuffer[IntervalPartition[S, V]]()
-    var otherPart: IntervalPartition[S, V] = null
-    var thisPart: IntervalPartition[S, V] = null
-    while(otherIter.hasNext) {
-      otherPart = otherIter.next
-
-      if (thisIter.hasNext) {
-        thisPart = thisIter.next
-      }
-      // TODO: reimplement merger
-      // if (otherPart.getId == thisPart.getId) {
-      //   res += thisPart.mergePartitions(otherPart)
-      // } else {
-        res += otherPart
-      //}
-    }
+  def apply(thisIter: Iterator[IntervalPartition[S, V]], otherIter: Iterator[IntervalPartition[S, V]]): Iterator[IntervalPartition[S, V]] = { 
+    var res: Map[ReferenceRegion, IntervalPartition[S, V]] = Map()
 
     while(thisIter.hasNext) {
-      res += thisIter.next()
+      val thisPart = thisIter.next
+      if (thisPart.getRegion.referenceName != "")
+        res += (thisPart.getRegion -> thisPart)
     }
-    res.iterator
+
+    while (otherIter.hasNext) {
+      val otherPart = otherIter.next
+      if (res.get(otherPart.getRegion) != None) {
+        res += (otherPart.getRegion -> res.get(otherPart.getRegion).get.mergePartitions(otherPart) )
+      } else {
+        res += (otherPart.getRegion -> otherPart)
+      }
+    }
+    res.iterator.map(a => a._2)
   }
 }
 

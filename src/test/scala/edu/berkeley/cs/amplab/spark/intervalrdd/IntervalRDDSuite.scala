@@ -36,7 +36,6 @@ class IntervalRDDSuite extends FunSuite  {
 
   var conf = new SparkConf(false)
   var sc = new SparkContext("local", "test", conf)
-  val partitions = 100 
 
   test("create IntervalRDD from RDD using apply") {
 
@@ -160,11 +159,10 @@ class IntervalRDDSuite extends FunSuite  {
     val zipped = sc.parallelize(intArr)
 
 
-    val newRDD: IntervalRDD[String, String] = testRDD.multiput(zipped)
+    val newRDD: IntervalRDD[String, String] = testRDD.multiput(zipped, sd)
 
     var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = newRDD.get(region3)
     var results = mappedResults.get
-    println(results)
     assert(results.head._2.head._2 == rec5._2)
   }
 
@@ -196,8 +194,8 @@ class IntervalRDDSuite extends FunSuite  {
     val zipped2: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(twoPutInput)
 
     // Call Put twice
-    val onePutRDD: IntervalRDD[String, String] = testRDD.multiput(zipped)
-    val twoPutRDD: IntervalRDD[String, String] = onePutRDD.multiput(zipped2)
+    val onePutRDD: IntervalRDD[String, String] = testRDD.multiput(zipped, sd)
+    val twoPutRDD: IntervalRDD[String, String] = onePutRDD.multiput(zipped2, sd)
 
     var resultsOrig: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region)
     var resultsOne: Option[Map[ReferenceRegion, List[(String, String)]]] = onePutRDD.get(region)
@@ -208,6 +206,41 @@ class IntervalRDDSuite extends FunSuite  {
     assert(resultsTwo.get.head._2.size == 6) //size after adding another record
   }
 
+  test("merge RDDs across multiple chromosomes") {
 
+    val region1: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
+    val region2: ReferenceRegion = new ReferenceRegion("chr2", 0L,  199L)
+
+    //creating data
+    val rec1: (String, String) = ("per1", "p1 chr1 0-99")
+    val rec2: (String, String) = ("per2", "p2 chr1 0-99")
+    val rec3: (String, String) = ("per3", "p3 chr1 0-99")
+    val rec4: (String, String) = ("per1", "p1 chr2 0-99")
+    val rec5: (String, String) = ("per2", "p2 chr2 0-99")
+    val rec6: (String, String) = ("per3", "p3 chr2 0-99")
+
+    var intArr = Array((region1, rec1), (region1, rec2), (region1, rec3))
+    var intArrRDD: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(intArr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L)))
+
+    var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
+
+    val newRDD = Array((region2, rec4), (region2, rec5))
+    val zipped: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(newRDD)
+
+
+    val chr2RDD: IntervalRDD[String, String] = testRDD.multiput(zipped, sd)
+
+    var origChr1: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region1)
+    var newChr1: Option[Map[ReferenceRegion, List[(String, String)]]] = chr2RDD.get(region1)
+
+    assert(origChr1 == newChr1) 
+
+    var newChr2: Option[Map[ReferenceRegion, List[(String, String)]]] = chr2RDD.get(region2)
+
+    assert(newChr2.get.head._2.size == newRDD.size) 
+  }
 
 }

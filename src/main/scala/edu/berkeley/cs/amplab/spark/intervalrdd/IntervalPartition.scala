@@ -34,12 +34,16 @@ import org.bdgenomics.formats.avro.AlignmentRecord
 // K = sec key
 // V = generic data blob
 class IntervalPartition[K: ClassTag, V: ClassTag] 
-	(protected val iTree: IntervalTree[K, V]) {
+	(val region: ReferenceRegion, protected val iTree: IntervalTree[K, V]) extends Serializable {
 
-  def this() {
-    this(new IntervalTree[K, V]())
+  def this(region: ReferenceRegion) {
+    this(region, new IntervalTree[K, V]())
   }
   
+  def this(iTree: IntervalTree[K, V]) = {
+    this(new ReferenceRegion(iTree.root.region.referenceName, 0, 0), iTree)
+  }
+
   def getTree(): IntervalTree[K, V] = {
     iTree
   }
@@ -49,10 +53,14 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
     new IntervalPartition(map)
   }
 
+  def getRegion(): ReferenceRegion = {
+    region
+  }
 
    // search by interval, return by (K=id, V=data)
-  def getAll(ks: Iterator[ReferenceRegion]): Iterator[(ReferenceRegion, List[(K, V)])] = 
+  def getAll(ks: Iterator[ReferenceRegion]): Iterator[(ReferenceRegion, List[(K, V)])] = {
     filterByRegion(ks.map { k => (k, iTree.search(k))  })
+  }
   
    
 
@@ -90,7 +98,7 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
       }
       newIter.toIterator
     } else {
-      println("Type not supported for filtering by Interval Partition. Data not filtered")
+      // println("Type not supported for filtering by Interval Partition. Data not filtered")
       iter
     }
   }
@@ -102,12 +110,18 @@ private[intervalrdd] object IntervalPartition {
   def apply[K: ClassTag, V: ClassTag]
       (iter: Iterator[(ReferenceRegion, (K, V))]): IntervalPartition[K, V] = {
     val map = new IntervalTree[K, V]()
-
+    // TODO: region should be set explicitly. This may cause issues
+    var chr = ""
     iter.foreach { 
       ku => {
+        if (chr == "")
+          chr = ku._1.referenceName
         map.insert(ku._1, ku._2) 
       }
     }
-    new IntervalPartition(map)
+    // TODO: 0, 0 can be mins and maxs to split a chr across partitions
+    val partitionKey = new ReferenceRegion(chr, 0, 0)
+
+    new IntervalPartition(partitionKey, map)
   }
 }
