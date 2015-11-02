@@ -24,20 +24,35 @@ import org.apache.spark.HashPartitioner
 
 import com.github.akmorrow13.intervaltree._
 import org.scalatest._
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
+import org.apache.spark.{ SparkConf, Logging, SparkContext }
 import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite
 import org.scalatest.Matchers
 import org.bdgenomics.adam.models.{ ReferenceRegion, SequenceRecord, SequenceDictionary }
+import org.bdgenomics.utils.instrumentation.Metrics
+import org.bdgenomics.utils.instrumentation.{RecordedMetrics, MetricsListener}
+import org.apache.spark.rdd.MetricsContext._
+import java.io.PrintWriter
+import java.io.StringWriter
+import java.io.OutputStreamWriter
+import org.bdgenomics.adam.util.ADAMFunSuite
 
-class IntervalRDDSuite extends FunSuite  {
 
-  var conf = new SparkConf(false)
-  var sc = new SparkContext("local", "test", conf)
 
-  test("create IntervalRDD from RDD using apply") {
+object TestTimers extends Metrics {
+  val Test1 = timer("Test1")
+  val Test2 = timer("Test2")
+  val Test3 = timer("Test3")
+}
+
+
+class IntervalRDDSuite extends ADAMFunSuite with Logging {
+
+  sparkTest("create IntervalRDD from RDD using apply") {
+    val metricsListener = new MetricsListener(new RecordedMetrics())
+    sc.addSparkListener(metricsListener)
+    Metrics.initialize(sc)
 
     val chr1 = "chr1"
     val chr2 = "chr2"
@@ -59,12 +74,22 @@ class IntervalRDDSuite extends FunSuite  {
       SequenceRecord("chr3", 1000L))) //NOTE: the number is the length of the chromosome
 
     var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
-
     assert(1 == 1)
+
+    val stringWriter = new StringWriter()
+    val writer = new PrintWriter(stringWriter)
+    Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
+    writer.flush()
+    val timings = stringWriter.getBuffer.toString
+    println(timings)
+    logInfo(timings)
 
   }
 
-  test("get one interval, k value") {
+  sparkTest("get one interval, k value") {
+    val metricsListener = new MetricsListener(new RecordedMetrics())
+    sc.addSparkListener(metricsListener)
+    Metrics.initialize(sc)
 
     val chr1 = "chr1"
     val chr2 = "chr2"
@@ -88,17 +113,76 @@ class IntervalRDDSuite extends FunSuite  {
       SequenceRecord("chr3", 1000L)))
 
     var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
+    testRDD.cache()
+    // testRDD.count()
     
-    var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region1, "person1")
-    var results = mappedResults.get
-    assert(results.get(region1).get.size == 1)
+    // var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region1, "person1")
+    // var results = mappedResults.get
+    // assert(results.get(region1).get.size == 1)
+    TestTimers.Test1.time {
+    var mappedResults = testRDD.get(region1)
+    mappedResults = testRDD.get(region1)
+    mappedResults = testRDD.get(region1)
+    mappedResults = testRDD.get(region1)
+    mappedResults = testRDD.get(region1)
+    // mappedResults = testRDD.get(region1)
+    // mappedResults = testRDD.get(region1)
+    // mappedResults = testRDD.get(region1)
+    // mappedResults = testRDD.get(region1)
+    // mappedResults = testRDD.get(region1)
+    // mappedResults = testRDD.get(region1)
+    println(mappedResults.get)
+    }
 
-    mappedResults = testRDD.get(region3)
-    results = mappedResults.get
-    assert(results.get(region3).get.size == 1)
+    // TestTimers.Test2.time {
+    // var mappedResults2 = testRDD.get(region2)
+    // mappedResults2 = testRDD.get(region2)
+    // mappedResults2 = testRDD.get(region2)
+    // mappedResults2 = testRDD.get(region2)
+    // mappedResults2 = testRDD.get(region2)
+    // mappedResults2 = testRDD.get(region2)
+    // mappedResults2 = testRDD.get(region2)
+    // mappedResults2 = testRDD.get(region2)
+    // mappedResults2 = testRDD.get(region2)
+    // mappedResults2 = testRDD.get(region2)
+    // mappedResults2 = testRDD.get(region2)
+    // println(mappedResults2.get)
+    // // var results = mappedResults.get
+    // }
+
+    // TestTimers.Test3.time {
+    // var mappedResults3 = testRDD.get(region3)
+    // mappedResults3 = testRDD.get(region3)
+    // mappedResults3 = testRDD.get(region3)
+    // mappedResults3 = testRDD.get(region3)
+    // mappedResults3 = testRDD.get(region3)
+    // mappedResults3 = testRDD.get(region3)
+    // mappedResults3 = testRDD.get(region3)
+    // mappedResults3 = testRDD.get(region3)
+    // mappedResults3 = testRDD.get(region3)
+    // mappedResults3 = testRDD.get(region3)
+    // mappedResults3 = testRDD.get(region3)
+    // println(mappedResults3.get)
+    // // var results = mappedResults.get
+    // }
+
+    // assert(results.get(region3).get.size == 1)
+
+    assert(0 == 0)
+    val stringWriter = new StringWriter()
+    val writer = new PrintWriter(stringWriter)
+    Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
+    writer.flush()
+    val timings = stringWriter.getBuffer.toString
+    println(timings)
+    logInfo(timings)
   }
 
-  test("put multiple keys to one chromosome. Test for key specificity") {
+  sparkTest("put multiple keys to one chromosome. Test for key specificity") {
+    val metricsListener = new MetricsListener(new RecordedMetrics())
+    sc.addSparkListener(metricsListener)
+    Metrics.initialize(sc)
+
     val chr1 = "chr1"
     val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
 
@@ -119,11 +203,27 @@ class IntervalRDDSuite extends FunSuite  {
     var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
     
     var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region1)
+    mappedResults = testRDD.get(region1)
+    mappedResults = testRDD.get(region1)
+    mappedResults = testRDD.get(region1)
+    mappedResults = testRDD.get(region1)
     var results = mappedResults.get
     assert(results.get(region1).get.size == 3)
+
+    val stringWriter = new StringWriter()
+    val writer = new PrintWriter(stringWriter)
+    Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
+    writer.flush()
+    val timings = stringWriter.getBuffer.toString
+    println(timings)
+    logInfo(timings)
+
   }
 
-  test("put multiple intervals into RDD to existing chromosome") {
+  sparkTest("put multiple intervals into RDD to existing chromosome") {
+    val metricsListener = new MetricsListener(new RecordedMetrics())
+    sc.addSparkListener(metricsListener)
+    Metrics.initialize(sc)
 
     val chr1 = "chr1"
     val chr2 = "chr2"
@@ -162,12 +262,28 @@ class IntervalRDDSuite extends FunSuite  {
     val newRDD: IntervalRDD[String, String] = testRDD.multiput(zipped, sd)
 
     var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = newRDD.get(region3)
+    mappedResults = newRDD.get(region3)
+    mappedResults = newRDD.get(region3)
+    mappedResults = newRDD.get(region3)
+    mappedResults = newRDD.get(region3)
     var results = mappedResults.get
     assert(results.head._2.head._2 == rec5._2)
+
+    val stringWriter = new StringWriter()
+    val writer = new PrintWriter(stringWriter)
+    Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
+    writer.flush()
+    val timings = stringWriter.getBuffer.toString
+    println(timings)
+    logInfo(timings)
+
   }
 
 
-  test("call put multiple times on reads with same ReferenceRegion") {
+  sparkTest("call put multiple times on reads with same ReferenceRegion") {
+    val metricsListener = new MetricsListener(new RecordedMetrics())
+    sc.addSparkListener(metricsListener)
+    Metrics.initialize(sc)
 
     val region: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
 
@@ -197,6 +313,7 @@ class IntervalRDDSuite extends FunSuite  {
     val onePutRDD: IntervalRDD[String, String] = testRDD.multiput(zipped, sd)
     val twoPutRDD: IntervalRDD[String, String] = onePutRDD.multiput(zipped2, sd)
 
+
     var resultsOrig: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region)
     var resultsOne: Option[Map[ReferenceRegion, List[(String, String)]]] = onePutRDD.get(region)
     var resultsTwo: Option[Map[ReferenceRegion, List[(String, String)]]] = twoPutRDD.get(region)
@@ -204,9 +321,21 @@ class IntervalRDDSuite extends FunSuite  {
     assert(resultsOrig.get.head._2.size == 3) //size of results for the one region we queried
     assert(resultsOne.get.head._2.size == 5) //size after adding two records
     assert(resultsTwo.get.head._2.size == 6) //size after adding another record
+
+    val stringWriter = new StringWriter()
+    val writer = new PrintWriter(stringWriter)
+    Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
+    writer.flush()
+    val timings = stringWriter.getBuffer.toString
+    println(timings)
+    logInfo(timings)
+
   }
 
-  test("merge RDDs across multiple chromosomes") {
+  sparkTest("merge RDDs across multiple chromosomes") {
+    val metricsListener = new MetricsListener(new RecordedMetrics())
+    sc.addSparkListener(metricsListener)
+    Metrics.initialize(sc)
 
     val region1: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
     val region2: ReferenceRegion = new ReferenceRegion("chr2", 0L,  199L)
@@ -241,6 +370,14 @@ class IntervalRDDSuite extends FunSuite  {
     var newChr2: Option[Map[ReferenceRegion, List[(String, String)]]] = chr2RDD.get(region2)
 
     assert(newChr2.get.head._2.size == newRDD.size) 
+    val stringWriter = new StringWriter()
+    val writer = new PrintWriter(stringWriter)
+    Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
+    writer.flush()
+    val timings = stringWriter.getBuffer.toString
+    println(timings)
+    logInfo(timings)
+    
   }
 
 }
