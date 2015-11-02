@@ -41,6 +41,10 @@ object IntervalTimers extends Metrics {
   val MultigetTime = timer("Multiget timer")
   val MultiputTime = timer("Multiput timer")
   val InitTime = timer("Initialize RDD")
+  val ResultsTime = timer("Results Job")
+  val PartMG = timer("Part Multiget")
+  val PartGA = timer("Part Getall")
+  val Match = timer("KS Match")
 }
 
 // K = chr, interval
@@ -94,18 +98,30 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
     val ksByPartition: Int = partitioner.get.getPartition(region)
     val partitions: Seq[Int] = Array(ksByPartition).toSeq
 
-    val results: Array[Array[(ReferenceRegion, List[(S, V)])]] = context.runJob(partitionsRDD,
-      (context: TaskContext, partIter: Iterator[IntervalPartition[S, V]]) => { 
+    val results: Array[Array[(ReferenceRegion, List[(S, V)])]] = IntervalTimers.ResultsTime.time {
+      context.runJob(partitionsRDD, (context: TaskContext, partIter: Iterator[IntervalPartition[S, V]]) => { 
        if (partIter.hasNext && (ksByPartition == context.partitionId)) { 
           val intPart = partIter.next()
-          ks match {
-            case Some(_) => intPart.multiget(Iterator((region, ks.get))).toArray
-            case None     => intPart.getAll(Iterator(region)).toArray 
-          }
+          val startTime = System.currentTimeMillis
+          // IntervalTimers.Match.time{
+            ks match {
+              case Some(_) => IntervalTimers.PartMG.time{intPart.multiget(Iterator((region, ks.get))).toArray}
+              case None     => IntervalTimers.PartGA.time{intPart.getAll(Iterator(region)).toArray}
+            }
+          // }
+          // val endTime = System.currentTimeMillis
+          // println("MATCH PART TIME IS")
+          // println(endTime - startTime)
+          // println()
+          // ks match {
+          //   case Some(_) => IntervalTimers.PartMG.time{intPart.multiget(Iterator((region, ks.get))).toArray}
+          //   case None     => IntervalTimers.PartGA.time{intPart.getAll(Iterator(region)).toArray}
+          // }
        } else {
           Array.empty
        }
       }, partitions, allowLocal = true)
+    }
     Option(results.flatten.toMap)
   }
 
