@@ -69,9 +69,8 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
     val startTime = System.currentTimeMillis
     val retVal = filterByRegion(ks.map { k => (k, iTree.search(k))  })
     val endTime = System.currentTimeMillis
-    // println("GETALL PART TIME IS")
-    // println(endTime - startTime)
-    // println()
+    println("GETALL PART TIME IS")
+    println(endTime - startTime)
     retVal
   }
   
@@ -82,9 +81,8 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
     val startTime = System.currentTimeMillis
     val retVal = filterByRegion(ks.map { k => (k._1, iTree.search(k._1, k._2))  })
     val endTime = System.currentTimeMillis
-    // println("MULTIGET PART TIME IS")
-    // println(endTime - startTime)
-    // println()
+    println("MULTIGET PART TIME IS")
+    println(endTime - startTime)
     retVal
   }
 
@@ -117,16 +115,16 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
         newIter += ((i._1, data.asInstanceOf[ListBuffer[(K, V)]].toList))
       }
       val endTime = System.currentTimeMillis
-      // println("FILTER BY REGION TIMING IS")
-      // println(endTime - startTime)
+      println("FILTER BY REGION TIMING IS")
+      println(endTime - startTime)
 
       newIter.toIterator
     } else {
       println("Type not supported for filtering by Interval Partition. Data not filtered")
       
       val endTime = System.currentTimeMillis
-      // println("FILTER BY REGION TIMING IS")
-      // println(endTime - startTime)
+      println("FILTER BY REGION TIMING IS")
+      println(endTime - startTime)
       iter
     }
   }
