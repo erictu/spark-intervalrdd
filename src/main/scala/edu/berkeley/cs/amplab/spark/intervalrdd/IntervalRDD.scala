@@ -103,20 +103,20 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
        if (partIter.hasNext && (ksByPartition == context.partitionId)) { 
           val intPart = partIter.next()
           val startTime = System.currentTimeMillis
-          // IntervalTimers.Match.time{
+          IntervalTimers.Match.time{
             ks match {
               case Some(_) => IntervalTimers.PartMG.time{intPart.multiget(Iterator((region, ks.get))).toArray}
               case None     => IntervalTimers.PartGA.time{intPart.getAll(Iterator(region)).toArray}
             }
-          // }
-          // val endTime = System.currentTimeMillis
-          // println("MATCH PART TIME IS")
-          // println(endTime - startTime)
-          // println()
-          // ks match {
-          //   case Some(_) => IntervalTimers.PartMG.time{intPart.multiget(Iterator((region, ks.get))).toArray}
-          //   case None     => IntervalTimers.PartGA.time{intPart.getAll(Iterator(region)).toArray}
-          // }
+          }
+          val endTime = System.currentTimeMillis
+          println("MATCH PART TIME IS")
+          println(endTime - startTime)
+          println()
+          ks match {
+            case Some(_) => IntervalTimers.PartMG.time{intPart.multiget(Iterator((region, ks.get))).toArray}
+            case None     => IntervalTimers.PartGA.time{intPart.getAll(Iterator(region)).toArray}
+          }
        } else {
           Array.empty
        }

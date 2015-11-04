@@ -67,11 +67,12 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
    // search by interval, return by (K=id, V=data)
   def getAll(ks: Iterator[ReferenceRegion]): Iterator[(ReferenceRegion, List[(K, V)])] = {
     val startTime = System.currentTimeMillis
-    val retVal = filterByRegion(ks.map { k => (k, iTree.search(k))  })
+    var input = ks.map { k => (k, iTree.search(k))  }
     val endTime = System.currentTimeMillis
     println("GETALL PART TIME IS")
     println(endTime - startTime)
-    retVal
+    //filterByRegion(input)
+    input
   }
   
    
@@ -79,11 +80,12 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
    // search by interval, return by (K=id, V=data)
   def multiget(ks: Iterator[(ReferenceRegion, List[K])]) : Iterator[(ReferenceRegion, List[(K, V)])] = PartTimers.PartGetTime.time {
     val startTime = System.currentTimeMillis
-    val retVal = filterByRegion(ks.map { k => (k._1, iTree.search(k._1, k._2))  })
+    var input = ks.map { k => (k._1, iTree.search(k._1, k._2))  }
     val endTime = System.currentTimeMillis
     println("MULTIGET PART TIME IS")
     println(endTime - startTime)
-    retVal
+    // filterByRegion(input)    
+    input
   }
 
 
@@ -102,19 +104,25 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
   }
 
   private def filterByRegion(iter: Iterator[(ReferenceRegion, List[(K, V)])]): Iterator[(ReferenceRegion, List[(K, V)])] = PartTimers.FilterTime.time {
-    val startTime = System.currentTimeMillis
+    var startTime = System.currentTimeMillis
+    var endTime = System.currentTimeMillis
     var newIter: ListBuffer[(ReferenceRegion, List[(K, V)])] = new ListBuffer[(ReferenceRegion, List[(K, V)])]()
 
     if (classOf[List[AlignmentRecord]].isAssignableFrom(classTag[V].runtimeClass)) {
       val aiter = iter.asInstanceOf[Iterator[(ReferenceRegion, List[(K, List[AlignmentRecord])])]]
+      println("Iterator length is: " + aiter.length)
       for (i <- aiter) {
         var data: ListBuffer[(K, List[AlignmentRecord])] = new ListBuffer()
+        startTime = System.currentTimeMillis
         i._2.foreach(d => {
           data += ((d._1, d._2.filter(r => i._1.overlaps(new ReferenceRegion(i._1.referenceName, r.start, r.end)))))
         })
         newIter += ((i._1, data.asInstanceOf[ListBuffer[(K, V)]].toList))
+        // endTime = System.currentTimeMillis
+
       }
-      val endTime = System.currentTimeMillis
+      endTime = System.currentTimeMillis
+      // val endTime = System.currentTimeMillis
       println("FILTER BY REGION TIMING IS")
       println(endTime - startTime)
 
