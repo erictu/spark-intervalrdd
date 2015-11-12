@@ -55,7 +55,7 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
     private val partitionsRDD: RDD[IntervalPartition[S, V]])
   extends RDD[(V)](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) with Logging {
 
-  require(partitionsRDD.partitioner.isDefined)
+  //require(partitionsRDD.partitioner.isDefined)
 
   override val partitioner = partitionsRDD.partitioner
 

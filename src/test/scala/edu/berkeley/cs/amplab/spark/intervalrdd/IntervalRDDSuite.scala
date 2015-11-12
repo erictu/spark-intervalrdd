@@ -60,9 +60,9 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
       val bamFile = "./mouse_chrM.bam"
       val region = new ReferenceRegion("chrM", 0L, 5000L)
-      var loadedBam = sc.loadIndexedBam(bamFile, region)
+      var loadedBam = sc.loadIndexedBam(bamFile, region).instrument
       val data = Array((region, ("person1", loadedBam.collect.toList)))
-      val rdd = sc.parallelize(data)
+      val rdd = sc.parallelize(data).instrument
       var dict = sc.adamDictionaryLoad[AlignmentRecord](bamFile)
       var intRDD = IntervalRDD(rdd, dict)
       var startTime = System.currentTimeMillis
