@@ -28,7 +28,7 @@ class IntervalPartitionSuite extends FunSuite  {
 
 	test("create new partition") {
 		val region = new ReferenceRegion("chr", 0, 100)
-		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long](region)
+		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
 		assert(partition != null)
 	}
 
@@ -85,7 +85,7 @@ class IntervalPartitionSuite extends FunSuite  {
 		val read3 = (2L, 2L)
 		val read4 =  (2L, 500L)
 
-		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long](regionKey)
+		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
 		val iter = Iterator((region1, List(read1, read3)), (region2, List(read2, read4)))
 
 		val newPartition = partition.multiput(iter)
@@ -147,7 +147,7 @@ class IntervalPartitionSuite extends FunSuite  {
 		val read4 = (2L, 500L)
 		val read5 = (3L, 500L)
 
-		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long](regionKey)
+		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
 		val iter = Iterator((region1, List(read1, read3)), (region2, List(read2, read4, read5)))
 
 		val newPartition = partition.multiput(iter)
@@ -185,7 +185,7 @@ class IntervalPartitionSuite extends FunSuite  {
 		val read5 = (3L, 500L)
 		val read6 = (4L, 250L)
 
-		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long](regionKey)
+		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
 		val iter = Iterator((region1, List(read1, read3)), (region2, List(read2, read4)), (region3, List(read5)), (region4, List(read6)))
 
 		val newPartition = partition.multiput(iter)

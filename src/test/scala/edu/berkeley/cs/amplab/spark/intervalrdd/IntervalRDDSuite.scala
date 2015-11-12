@@ -38,6 +38,8 @@ import java.io.StringWriter
 import java.io.OutputStreamWriter
 import org.bdgenomics.adam.util.ADAMFunSuite
 
+import org.bdgenomics.adam.rdd.ADAMContext._
+import org.bdgenomics.formats.avro.{ AlignmentRecord, Feature, Genotype, GenotypeAllele, NucleotideContigFragment }
 
 
 object TestTimers extends Metrics {
@@ -48,6 +50,94 @@ object TestTimers extends Metrics {
 
 
 class IntervalRDDSuite extends ADAMFunSuite with Logging {
+
+
+    sparkTest("assert the data pulled from a file is the same") {
+      val metricsListener = new MetricsListener(new RecordedMetrics())
+      sc.addSparkListener(metricsListener)
+      Metrics.initialize(sc)
+
+
+      val bamFile = "./mouse_chrM.bam"
+      val region = new ReferenceRegion("chrM", 0L, 5000L)
+      val srchRegion = new ReferenceRegion("chrM", 0L, 100L)
+
+      var loadedBam = sc.loadIndexedBam(bamFile, region)
+      val data = Array((region, ("person1", loadedBam.collect.toList)))
+      val rdd = sc.parallelize(data)
+      var dict = sc.adamDictionaryLoad[AlignmentRecord](bamFile)
+
+      var intRDD = IntervalRDD(rdd, dict)
+      var startTime = System.currentTimeMillis
+      var results = intRDD.get(srchRegion, "person1")
+      var results2 = intRDD.get(region, "person1")
+
+      println(results.get(srchRegion).head._2.size)
+      println(results2.get(region).head._2.size)
+
+
+      var endTime = System.currentTimeMillis
+      var diff = (endTime - startTime)
+      println("Initial query1: " + diff)
+      println()
+
+
+
+      // TestTimers.Test1.time{
+      // startTime = System.currentTimeMillis
+      // results = intRDD.get(region, "person1")
+      // endTime = System.currentTimeMillis
+      // diff = (endTime - startTime)
+      // println("query2: " + diff)
+      // println()
+
+      // startTime = System.currentTimeMillis
+      // intRDD.get(region, "person1")
+      // endTime = System.currentTimeMillis
+      // diff = (endTime - startTime)
+      // println("query3: " + diff)
+      // println()
+
+      // startTime = System.currentTimeMillis
+      // intRDD.get(region, "person1")
+      // endTime = System.currentTimeMillis
+      // diff = (endTime - startTime)
+      // println("query4: " + diff)
+      // println()
+
+      // startTime = System.currentTimeMillis
+      // intRDD.get(region, "person1")
+      // endTime = System.currentTimeMillis
+      // diff = (endTime - startTime)
+      // println("query5: " + diff)
+      // println()
+      // }
+
+      // startTime = System.currentTimeMillis
+      // loadedBam = sc.loadIndexedBam(bamFile, region)
+      // endTime = System.currentTimeMillis
+      // diff = (endTime - startTime)
+      // println("loadIndexedBamDirectly: " + diff)
+
+      // startTime = System.currentTimeMillis
+      // sc.loadBam(bamFile).filterByOverlappingRegion(region)
+      // endTime = System.currentTimeMillis
+      // diff = (endTime - startTime)
+      // println("loadBamDirectly: " + diff)
+
+      // // println(loadedBam.collect.toList.size)
+      // // println(results.get.get(region).get(0)._2.length)
+      // // assert(loadedBam.collect.toList.size == results.get.get(region).get(0)._2.length)
+
+      // val stringWriter = new StringWriter()
+      // val writer = new PrintWriter(stringWriter)
+      // Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
+      // writer.flush()
+      // val timings = stringWriter.getBuffer.toString
+      // println(timings)
+      // logInfo(timings)
+
+    }
 
   sparkTest("create IntervalRDD from RDD using apply") {
     val metricsListener = new MetricsListener(new RecordedMetrics())
@@ -113,7 +203,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr3", 1000L)))
 
     var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
-    testRDD.cache()
+    // testRDD.persist()
     // testRDD.count()
     
     // var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region1, "person1")
@@ -377,7 +467,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
     val timings = stringWriter.getBuffer.toString
     println(timings)
     logInfo(timings)
-    
+
   }
 
 }

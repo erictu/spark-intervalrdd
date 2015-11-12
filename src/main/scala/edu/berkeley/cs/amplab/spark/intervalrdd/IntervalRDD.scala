@@ -61,27 +61,9 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
 
   override protected def getPartitions: Array[Partition] = partitionsRDD.partitions 
 
-  def getParts: Array[Partition] = getPartitions
-
-  // // add bookkeeping private structure
-  // // String is the chromosome/location, Long is partition number
-  // var bookkeep: IntervalTree[String, Long] = new IntervalTree[String, Long]()
-
-  /** Gets the value corresponding to the specified request, if any. 
-  * a request contains the chromosome, interval, and specified keys
-  */
-
   /** Provides the `RDD[(K, V)]` equivalent output. */
   override def compute(part: Partition, context: TaskContext): Iterator[V] = {
-    // TODO
     null
-  }
-
-  def dumpPartitions() = {
-    println("Partition Dump")
-    partitionsRDD.foreachPartition(
-      part => part.asInstanceOf[IntervalPartition[S, V]].getTree().printNodes
-    )
   }
 
   def get(region: ReferenceRegion, k: S): Option[Map[ReferenceRegion, List[(S, V)]]] = multiget(region, Option(List(k)))
@@ -136,30 +118,18 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
     val merger = new PartitionMerger[S, V]()
     val newPartitionsRDD = partitionsRDD.zipPartitions(convertedPartitions, true)((aiter, biter) => merger(aiter, biter))
     new IntervalRDD(newPartitionsRDD)
-
   }
 
 }
 
 class PartitionMerger[S: ClassTag, V: ClassTag]() extends Serializable {
   def apply(thisIter: Iterator[IntervalPartition[S, V]], otherIter: Iterator[IntervalPartition[S, V]]): Iterator[IntervalPartition[S, V]] = { 
-    var res: Map[ReferenceRegion, IntervalPartition[S, V]] = Map()
-
-    while(thisIter.hasNext) {
-      val thisPart = thisIter.next
-      if (thisPart.getRegion.referenceName != "")
-        res += (thisPart.getRegion -> thisPart)
+    var res: List[IntervalPartition[S,V]] = List()
+    while(thisIter.hasNext && otherIter.hasNext) {
+      val x = thisIter.next.mergePartitions(otherIter.next)
+      res ::= x
     }
-
-    while (otherIter.hasNext) {
-      val otherPart = otherIter.next
-      if (res.get(otherPart.getRegion) != None) {
-        res += (otherPart.getRegion -> res.get(otherPart.getRegion).get.mergePartitions(otherPart) )
-      } else {
-        res += (otherPart.getRegion -> otherPart)
-      }
-    }
-    res.iterator.map(a => a._2)
+    res.iterator
   }
 }
 

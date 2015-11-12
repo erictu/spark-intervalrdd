@@ -27,6 +27,8 @@ libraryDependencies += "org.bdgenomics.adam" %% "adam-core" % "0.18.0" % "test" 
 libraryDependencies += "org.bdgenomics.utils" %% "utils-misc" % "0.2.3" % "test" classifier "tests"
 
 
-javaOptions in test += "-Xmx2G"
+javaOptions in test += "-Xmx1024m"
+javaOptions in test += "-Xms1024m"
+javaOptions in Test += "-agentpath:/path/to/yjp"
 
 fork in test := true

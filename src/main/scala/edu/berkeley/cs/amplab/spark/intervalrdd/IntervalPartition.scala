@@ -41,14 +41,10 @@ object PartTimers extends Metrics {
 // K = sec key
 // V = generic data blob
 class IntervalPartition[K: ClassTag, V: ClassTag] 
-	(val region: ReferenceRegion, protected val iTree: IntervalTree[K, V]) extends Serializable {
+	(protected val iTree: IntervalTree[K, V]) extends Serializable with Logging {
 
-  def this(region: ReferenceRegion) {
-    this(region, new IntervalTree[K, V]())
-  }
-  
-  def this(iTree: IntervalTree[K, V]) = {
-    this(new ReferenceRegion(iTree.root.region.referenceName, 0, 0), iTree)
+  def this() {
+    this(new IntervalTree[K, V]())
   }
 
   def getTree(): IntervalTree[K, V] = {
@@ -60,35 +56,31 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
     new IntervalPartition(map)
   }
 
-  def getRegion(): ReferenceRegion = {
-    region
-  }
-
-   // search by interval, return by (K=id, V=data)
+  /**
+   * Gets all (k,v) data from partition within the specificed referenceregion
+   *
+   * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
+   */
   def getAll(ks: Iterator[ReferenceRegion]): Iterator[(ReferenceRegion, List[(K, V)])] = {
-    val startTime = System.currentTimeMillis
-    val retVal = filterByRegion(ks.map { k => (k, iTree.search(k))  })
-    val endTime = System.currentTimeMillis
-    // println("GETALL PART TIME IS")
-    // println(endTime - startTime)
-    // println()
-    retVal
+    var input = ks.map { k => (k, iTree.search(k))  }
+    filterByRegion(input)
   }
   
-   
-
-   // search by interval, return by (K=id, V=data)
+  /**
+   * Gets data from partition within the specificed referenceregion and key k.
+   *
+   * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
+   */
   def multiget(ks: Iterator[(ReferenceRegion, List[K])]) : Iterator[(ReferenceRegion, List[(K, V)])] = PartTimers.PartGetTime.time {
-    val startTime = System.currentTimeMillis
-    val retVal = filterByRegion(ks.map { k => (k._1, iTree.search(k._1, k._2))  })
-    val endTime = System.currentTimeMillis
-    // println("MULTIGET PART TIME IS")
-    // println(endTime - startTime)
-    // println()
-    retVal
+    var input = ks.map { k => (k._1, iTree.search(k._1, k._2))  }
+    filterByRegion(input)    
   }
 
-
+  /**
+   * Puts all (k,v) data from partition within the specificed referenceregion
+   *
+   * @return IntervalPartition with new data 
+   */
   def multiput(
       kvs: Iterator[(ReferenceRegion, List[(K, V)])]): IntervalPartition[K, V] = PartTimers.PartPutTime.time {
     val newTree = iTree.snapshot()
@@ -98,35 +90,38 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
     this.withMap(newTree)
   }
 
+  /**
+   * Merges trees of this partition with a specified partition
+   *
+   * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
+   */
   def mergePartitions(p: IntervalPartition[K, V]): IntervalPartition[K, V] = {
     val newTree = iTree.merge(p.getTree)
     this.withMap(newTree)
   }
 
+  /**
+   * Filters data pulled from partition by specific reference region to be searched over TODO: This is messy
+   *
+   * @return Filtered data within given referenceregion
+   */
   private def filterByRegion(iter: Iterator[(ReferenceRegion, List[(K, V)])]): Iterator[(ReferenceRegion, List[(K, V)])] = PartTimers.FilterTime.time {
-    val startTime = System.currentTimeMillis
     var newIter: ListBuffer[(ReferenceRegion, List[(K, V)])] = new ListBuffer[(ReferenceRegion, List[(K, V)])]()
 
+    // filters
     if (classOf[List[AlignmentRecord]].isAssignableFrom(classTag[V].runtimeClass)) {
       val aiter = iter.asInstanceOf[Iterator[(ReferenceRegion, List[(K, List[AlignmentRecord])])]]
       for (i <- aiter) {
+        // go through all records and fliter alginmentrecods not in referenceregion
         var data: ListBuffer[(K, List[AlignmentRecord])] = new ListBuffer()
         i._2.foreach(d => {
           data += ((d._1, d._2.filter(r => i._1.overlaps(new ReferenceRegion(i._1.referenceName, r.start, r.end)))))
         })
         newIter += ((i._1, data.asInstanceOf[ListBuffer[(K, V)]].toList))
       }
-      val endTime = System.currentTimeMillis
-      // println("FILTER BY REGION TIMING IS")
-      // println(endTime - startTime)
-
       newIter.toIterator
     } else {
-      println("Type not supported for filtering by Interval Partition. Data not filtered")
-      
-      val endTime = System.currentTimeMillis
-      // println("FILTER BY REGION TIMING IS")
-      // println(endTime - startTime)
+      log.warn("Type not supported for filtering by Interval Partition. Data not filtered")
       iter
     }
   }
@@ -138,18 +133,12 @@ private[intervalrdd] object IntervalPartition {
   def apply[K: ClassTag, V: ClassTag]
       (iter: Iterator[(ReferenceRegion, (K, V))]): IntervalPartition[K, V] = {
     val map = new IntervalTree[K, V]()
-    // TODO: region should be set explicitly. This may cause issues
-    var chr = ""
     iter.foreach { 
       ku => {
-        if (chr == "")
-          chr = ku._1.referenceName
         map.insert(ku._1, ku._2) 
       }
     }
-    // TODO: 0, 0 can be mins and maxs to split a chr across partitions
-    val partitionKey = new ReferenceRegion(chr, 0, 0)
 
-    new IntervalPartition(partitionKey, map)
+    new IntervalPartition(map)
   }
 }
