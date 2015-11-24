@@ -30,7 +30,7 @@ import edu.berkeley.cs.amplab.spark.intervalrdd._
 import com.github.akmorrow13.intervaltree._
 import org.apache.spark.Logging
 import org.bdgenomics.adam.models.ReferenceRegion
-import org.bdgenomics.formats.avro.AlignmentRecord
+import org.bdgenomics.formats.avro.{ AlignmentRecord, Genotype }
 import org.bdgenomics.utils.instrumentation.Metrics
 
 object PartTimers extends Metrics {
@@ -116,6 +116,17 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
         var data: ListBuffer[(K, List[AlignmentRecord])] = new ListBuffer()
         i._2.foreach(d => {
           data += ((d._1, d._2.filter(r => i._1.overlaps(new ReferenceRegion(i._1.referenceName, r.start, r.end)))))
+        })
+        newIter += ((i._1, data.asInstanceOf[ListBuffer[(K, V)]].toList))
+      }
+      newIter.toIterator
+    } else if (classOf[List[Genotype]].isAssignableFrom(classTag[V].runtimeClass)) {
+      val aiter = iter.asInstanceOf[Iterator[(ReferenceRegion, List[(K, List[Genotype])])]]
+      for (i <- aiter) {
+        // go through all records and fliter alginmentrecods not in referenceregion
+        var data: ListBuffer[(K, List[Genotype])] = new ListBuffer()
+        i._2.foreach(d => {
+          data += ((d._1, d._2.filter(r => i._1.overlaps(new ReferenceRegion(i._1.referenceName, r.variant.start, r.variant.end)))))
         })
         newIter += ((i._1, data.asInstanceOf[ListBuffer[(K, V)]].toList))
       }
