@@ -61,9 +61,9 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
    *
    * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
    */
-  def getAll(ks: Iterator[ReferenceRegion]): Iterator[(ReferenceRegion, List[(K, V)])] = {
-    var input = ks.map { k => (k, iTree.search(k))  }
-    filterByRegion(input)
+  def get(r: ReferenceRegion): Iterator[(K, V)] = {
+    iTree.search(r)
+    // filterByRegion(input)
   }
 
   /**
@@ -71,9 +71,18 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
    *
    * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
    */
-  def multiget(ks: Iterator[(ReferenceRegion, List[K])]) : Iterator[(ReferenceRegion, List[(K, V)])] = PartTimers.PartGetTime.time {
-    var input = ks.map { k => (k._1, iTree.search(k._1, k._2))  }
-    filterByRegion(input)
+  def get(r: ReferenceRegion, k: K) : Iterator[(K, V)] = PartTimers.PartGetTime.time {
+    multiget(r, Iterator(k))
+  }
+
+  /**
+   * Gets data from partition within the specificed referenceregion and key k.
+   *
+   * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
+   */
+  def multiget(r: ReferenceRegion, ks: Iterator[K]) : Iterator[(K, V)] = PartTimers.PartGetTime.time {
+    iTree.search(r, ks)
+    // filterByRegion(input)
   }
 
   /**
@@ -81,12 +90,9 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
    *
    * @return IntervalPartition with new data
    */
-  def multiput(
-      kvs: Iterator[(ReferenceRegion, List[(K, V)])]): IntervalPartition[K, V] = PartTimers.PartPutTime.time {
+  def multiput(r: ReferenceRegion, kvs: Iterator[(K, V)]): IntervalPartition[K, V] = PartTimers.PartPutTime.time {
     val newTree = iTree.snapshot()
-    for (ku <- kvs) {
-      newTree.insert(ku._1, ku._2)
-    }
+    newTree.insert(r, kvs)
     this.withMap(newTree)
   }
 

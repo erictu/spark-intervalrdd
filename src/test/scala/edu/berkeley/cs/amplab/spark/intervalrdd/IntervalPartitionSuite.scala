@@ -60,18 +60,14 @@ class IntervalPartitionSuite extends FunSuite  {
 		val iter = Iterator((region1, read1), (region2, read2), (region1, read3), (region2, read4))
 		val partition = IntervalPartition(iter)
 
-		val results = partition.getAll(Iterator(region1, region2))
-	    for (ku <- results) {
-	      if (ku._1.equals(region1)) {
-	      	assert(ku._2.contains(read1))
-	      	assert(ku._2.contains(read3))
-	      }
-	      if (ku._1.equals(region2)) {
-	      	assert(ku._2.contains(read2))
-	      	assert(ku._2.contains(read4))
-	      }
-	    }
-	}
+		var results: List[(Long, Long)] = partition.get(region1).toList
+		results = results ++ partition.get(region2).toList
+
+		assert(results.contains(read1))
+		assert(results.contains(read2))
+		assert(results.contains(read3))
+		assert(results.contains(read4))
+}
 
 	test("put some for iterator of intervals and key-values") {
 
@@ -86,24 +82,19 @@ class IntervalPartitionSuite extends FunSuite  {
 		val read4 =  (2L, 500L)
 
 		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
-		val iter = Iterator((region1, List(read1, read3)), (region2, List(read2, read4)))
 
-		val newPartition = partition.multiput(iter)
+		var newPartition = partition.multiput(region1, Iterator(read1, read3))
+		newPartition = newPartition.multiput(region2, Iterator(read2, read4))
 
 		// assert values are in the new partition
-		val results = newPartition.getAll(Iterator(region1, region2))
-	    for (ku <- results) {
-	      if (ku._1.equals(region1)) {
-	      	assert(ku._2.size == 2)
-	      	assert(ku._2.contains(read1))
-	      	assert(ku._2.contains(read3))
-	      }
-	      if (ku._1.equals(region2)) {
-	      	assert(ku._2.size == 2)
-	      	assert(ku._2.contains(read2))
-	      	assert(ku._2.contains(read4))
-	      }
-	    }	
+		var results: List[(Long, Long)] = newPartition.get(region1).toList
+		results = results ++ newPartition.get(region2).toList
+
+		assert(results.contains(read1))
+		assert(results.contains(read2))
+		assert(results.contains(read3))
+		assert(results.contains(read4))
+
 	}
 
 	test("get some for iterator of intervals") {
@@ -120,19 +111,11 @@ class IntervalPartitionSuite extends FunSuite  {
 		val iter = Iterator((region1, read1), (region2, read2), (region1, read3), (region2, read4))
 		val partition = IntervalPartition(iter)
 
-		val results = partition.multiget(Iterator((region1, List(1L)), (region2, List(1L, 2L))))
+		var results = partition.get(region1, 1L).toList
+		results = results ++ partition.get(region2, 2L).toList
 
-	    for (ku <- results) {
-	    	if (ku._1.equals(region1)) {
-				assert(ku._2.contains(read1))
-
-				assert(!ku._2.contains(read2))				
-			}
-			if (ku._1.equals(region2)) {
-				assert(ku._2.contains(read2))
-				assert(ku._2.contains(read4))
-			}
-	    }
+		assert(results.contains(read1))
+		assert(results.contains(read4))
 	}
 
 	test("putting differing number of reads into different regions") {
@@ -148,24 +131,21 @@ class IntervalPartitionSuite extends FunSuite  {
 		val read5 = (3L, 500L)
 
 		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
-		val iter = Iterator((region1, List(read1, read3)), (region2, List(read2, read4, read5)))
+		val iter1 = Iterator(read1, read3)
+		val iter2 = Iterator(read4, read2, read5)
 
-		val newPartition = partition.multiput(iter)
+		var newPartition = partition.multiput(region1, iter1)
+		newPartition = newPartition.multiput(region2, iter2)
 
 		// assert values are in the new partition
-		val results = newPartition.getAll(Iterator(region1, region2))
-	    for (ku <- results) {
-	      if (ku._1.equals(region1)) {
-	      	assert(ku._2.size == 2)
-	      	assert(ku._2.contains(read1))
-	      	assert(ku._2.contains(read3))
-	      }
-	      if (ku._1.equals(region2)) {
-	      	assert(ku._2.size == 3)
-	      	assert(ku._2.contains(read2))
-	      	assert(ku._2.contains(read4))
-	      }
-	    }
+		var results: List[(Long, Long)] = newPartition.get(region1).toList
+		results = results ++ newPartition.get(region2).toList
+
+		assert(results.contains(read1))
+		assert(results.contains(read2))
+		assert(results.contains(read3))
+		assert(results.contains(read4))
+		assert(results.contains(read5))
 
 	}
 
@@ -186,16 +166,17 @@ class IntervalPartitionSuite extends FunSuite  {
 		val read6 = (4L, 250L)
 
 		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
-		val iter = Iterator((region1, List(read1, read3)), (region2, List(read2, read4)), (region3, List(read5)), (region4, List(read6)))
 
-		val newPartition = partition.multiput(iter)
+		var newPartition = partition.multiput(region1, Iterator(read1, read3))
+		newPartition = newPartition.multiput(region2, Iterator(read2, read4))
+		newPartition = newPartition.multiput(region3, Iterator(read5))
+		newPartition = newPartition.multiput(region4, Iterator(read6))
 
 		val overlapReg: ReferenceRegion = new ReferenceRegion(chr1, 0L, 200L)
 		// assert values are in the new partition
-		val results = newPartition.getAll(Iterator(overlapReg))
-	    for (ku <- results) {
-	    	assert(ku._2.size == 5)
-	    }
+		val results = newPartition.get(overlapReg).toList
+	  assert(results.size == 5)
+		println(results.size)
 
 	}
 

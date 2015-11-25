@@ -67,19 +67,15 @@ class IntervalRDDLoadSuite extends ADAMFunSuite with Logging {
     val alignmentRDD: RDD[(ReferenceRegion, (String,AlignmentRecord))] = getDataFromBamFile(bamFile, region, key)
 
     val sd = new SequenceDictionary(Vector(SequenceRecord("chr", 1000L),
-      SequenceRecord("chr2", 1000L), 
-      SequenceRecord("chrM", 1000L))) 
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chrM", 1000L)))
 
-  
+
     var intRDD: IntervalRDD[String, AlignmentRecord] = IntervalRDD(alignmentRDD, sd)
 
     // get data from intRDD and alignmentRDD. Compare results
     val results = alignmentRDD.filter(r => r._1.overlaps(region))
-
-    println(results.count())
-    
     val intResults = intRDD.get(region, key)
-    intResults.foreach(println)
 
     val stringWriter = new StringWriter()
     val writer = new PrintWriter(stringWriter)
@@ -90,7 +86,5 @@ class IntervalRDDLoadSuite extends ADAMFunSuite with Logging {
     logInfo(timings)
 
   }
-
-
 
 }
