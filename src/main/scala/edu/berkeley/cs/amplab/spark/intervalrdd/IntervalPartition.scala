@@ -40,7 +40,7 @@ object PartTimers extends Metrics {
 }
 // K = sec key
 // V = generic data blob
-class IntervalPartition[K: ClassTag, V: ClassTag] 
+class IntervalPartition[K: ClassTag, V: ClassTag]
 	(protected val iTree: IntervalTree[K, V]) extends Serializable with Logging {
 
   def this() {
@@ -65,7 +65,7 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
     var input = ks.map { k => (k, iTree.search(k))  }
     filterByRegion(input)
   }
-  
+
   /**
    * Gets data from partition within the specificed referenceregion and key k.
    *
@@ -73,13 +73,13 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
    */
   def multiget(ks: Iterator[(ReferenceRegion, List[K])]) : Iterator[(ReferenceRegion, List[(K, V)])] = PartTimers.PartGetTime.time {
     var input = ks.map { k => (k._1, iTree.search(k._1, k._2))  }
-    filterByRegion(input)    
+    filterByRegion(input)
   }
 
   /**
    * Puts all (k,v) data from partition within the specificed referenceregion
    *
-   * @return IntervalPartition with new data 
+   * @return IntervalPartition with new data
    */
   def multiput(
       kvs: Iterator[(ReferenceRegion, List[(K, V)])]): IntervalPartition[K, V] = PartTimers.PartPutTime.time {
@@ -108,33 +108,34 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
   private def filterByRegion(iter: Iterator[(ReferenceRegion, List[(K, V)])]): Iterator[(ReferenceRegion, List[(K, V)])] = PartTimers.FilterTime.time {
     var newIter: ListBuffer[(ReferenceRegion, List[(K, V)])] = new ListBuffer[(ReferenceRegion, List[(K, V)])]()
 
+
     // filters
-    if (classOf[List[AlignmentRecord]].isAssignableFrom(classTag[V].runtimeClass)) {
-      val aiter = iter.asInstanceOf[Iterator[(ReferenceRegion, List[(K, List[AlignmentRecord])])]]
-      for (i <- aiter) {
-        // go through all records and fliter alginmentrecods not in referenceregion
-        var data: ListBuffer[(K, List[AlignmentRecord])] = new ListBuffer()
-        i._2.foreach(d => {
-          data += ((d._1, d._2.filter(r => i._1.overlaps(new ReferenceRegion(i._1.referenceName, r.start, r.end)))))
-        })
-        newIter += ((i._1, data.asInstanceOf[ListBuffer[(K, V)]].toList))
-      }
-      newIter.toIterator
-    } else if (classOf[List[Genotype]].isAssignableFrom(classTag[V].runtimeClass)) {
-      val aiter = iter.asInstanceOf[Iterator[(ReferenceRegion, List[(K, List[Genotype])])]]
-      for (i <- aiter) {
-        // go through all records and fliter alginmentrecods not in referenceregion
-        var data: ListBuffer[(K, List[Genotype])] = new ListBuffer()
-        i._2.foreach(d => {
-          data += ((d._1, d._2.filter(r => i._1.overlaps(new ReferenceRegion(i._1.referenceName, r.variant.start, r.variant.end)))))
-        })
-        newIter += ((i._1, data.asInstanceOf[ListBuffer[(K, V)]].toList))
-      }
-      newIter.toIterator
-    } else {
+    // if (classOf[List[AlignmentRecord]].isAssignableFrom(classTag[V].runtimeClass)) {
+    //   val aiter = iter.asInstanceOf[Iterator[(ReferenceRegion, List[(K, List[AlignmentRecord])])]]
+    //   for (i <- aiter) {
+    //     // go through all records and fliter alginmentrecods not in referenceregion
+    //     var data: ListBuffer[(K, List[AlignmentRecord])] = new ListBuffer()
+    //     i._2.foreach(d => {
+    //       data += ((d._1, d._2.filter(r => i._1.overlaps(new ReferenceRegion(i._1.referenceName, r.start, r.end)))))
+    //     })
+    //     newIter += ((i._1, data.asInstanceOf[ListBuffer[(K, V)]].toList))
+    //   }
+    //   newIter.toIterator
+    // } else if (classOf[List[Genotype]].isAssignableFrom(classTag[V].runtimeClass)) {
+    //   val aiter = iter.asInstanceOf[Iterator[(ReferenceRegion, List[(K, List[Genotype])])]]
+    //   for (i <- aiter) {
+    //     // go through all records and fliter alginmentrecods not in referenceregion
+    //     var data: ListBuffer[(K, List[Genotype])] = new ListBuffer()
+    //     i._2.foreach(d => {
+    //       data += ((d._1, d._2.filter(r => i._1.overlaps(new ReferenceRegion(i._1.referenceName, r.variant.start, r.variant.end)))))
+    //     })
+    //     newIter += ((i._1, data.asInstanceOf[ListBuffer[(K, V)]].toList))
+    //   }
+    //   newIter.toIterator
+    // } else {
       log.warn("Type not supported for filtering by Interval Partition. Data not filtered")
       iter
-    }
+  //  }
   }
 
 }
@@ -144,9 +145,9 @@ private[intervalrdd] object IntervalPartition {
   def apply[K: ClassTag, V: ClassTag]
       (iter: Iterator[(ReferenceRegion, (K, V))]): IntervalPartition[K, V] = {
     val map = new IntervalTree[K, V]()
-    iter.foreach { 
+    iter.foreach {
       ku => {
-        map.insert(ku._1, ku._2) 
+        map.insert(ku._1, ku._2)
       }
     }
 

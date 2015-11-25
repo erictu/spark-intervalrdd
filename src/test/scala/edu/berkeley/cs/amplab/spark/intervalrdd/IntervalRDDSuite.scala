@@ -76,7 +76,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
   //   var intArrRDD: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(intArr)
 
   //   val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
-  //     SequenceRecord("chr2", 1000L), 
+  //     SequenceRecord("chr2", 1000L),
   //     SequenceRecord("chr3", 1000L))) //NOTE: the number is the length of the chromosome
 
   //   var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
@@ -121,7 +121,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
   //   var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
   //   // testRDD.persist()
   //   // testRDD.count()
-    
+
   //   // var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region1, "person1")
   //   // var results = mappedResults.get
   //   // assert(results.get(region1).get.size == 1)
@@ -206,7 +206,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
   //     SequenceRecord("chr3", 1000L)))
 
   //   var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
-    
+
   //   var mappedResults: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region1)
   //   mappedResults = testRDD.get(region1)
   //   mappedResults = testRDD.get(region1)
@@ -369,11 +369,11 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
   //   var origChr1: Option[Map[ReferenceRegion, List[(String, String)]]] = testRDD.get(region1)
   //   var newChr1: Option[Map[ReferenceRegion, List[(String, String)]]] = chr2RDD.get(region1)
 
-  //   assert(origChr1 == newChr1) 
+  //   assert(origChr1 == newChr1)
 
   //   var newChr2: Option[Map[ReferenceRegion, List[(String, String)]]] = chr2RDD.get(region2)
 
-  //   assert(newChr2.get.head._2.size == newRDD.size) 
+  //   assert(newChr2.get.head._2.size == newRDD.size)
   //   val stringWriter = new StringWriter()
   //   val writer = new PrintWriter(stringWriter)
   //   Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
@@ -383,23 +383,23 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
   // }
 
-  // sparkTest("test for vcf data retreival") {
+  sparkTest("test for vcf data retreival") {
 
-  //   val filePath = "./true.vcf"
+    val filePath = "./6-sample.vcf"
 
-  //   val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L)))
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L)))
 
-  //   // load variant data
-  //   val chr1 = "chr1"
-  //   val viewRegion: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
+    // load variant data
+    val chr1 = "chr1"
+    val viewRegion: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
 
-  //   val vRDD: RDD[(String,Genotype)] = sc.loadGenotypes(filePath).filterByOverlappingRegion(viewRegion).map(x => (x.sampleId, x))
-  //   val variantRDD: RDD[(ReferenceRegion, (String,Genotype))] = vRDD.keyBy(v => ReferenceRegion(ReferencePosition(v._2)))
+    val vRDD: RDD[(String,Genotype)] = sc.loadGenotypes(filePath).filterByOverlappingRegion(viewRegion).map(x => (x.sampleId, x))
+    val variantRDD: RDD[(ReferenceRegion, (String,Genotype))] = vRDD.keyBy(v => ReferenceRegion(ReferencePosition(v._2)))
 
-  //   var testRDD: IntervalRDD[String, Genotype] = IntervalRDD(variantRDD, sd)
-  //   val results = testRDD.get(viewRegion, "NA12878")
-  //   println(results)
+    var testRDD: IntervalRDD[String, Genotype] = IntervalRDD(variantRDD, sd)
+    val results = testRDD.get(viewRegion, "NA12878")
+    println(results)
 
-  // }
+  }
 
 }
