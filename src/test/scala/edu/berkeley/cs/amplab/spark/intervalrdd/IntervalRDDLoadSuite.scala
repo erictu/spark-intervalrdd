@@ -53,38 +53,86 @@ class IntervalRDDLoadSuite extends ADAMFunSuite with Logging {
 
   }
 
+  def setTime(): Double = {
+    System.nanoTime()
+  }
+  def getTime(start: Double): Double = {
+    val time = (System.nanoTime() - start)
+    time/1e9
+  }
 
-  sparkTest("create IntervalRDD from RDD using apply") {
+  sparkTest("Time getting from raw bam file") {
     val bamFile = "mouse_chrM.bam"
     val region = new ReferenceRegion("chrM", 0L, 1050L)
     val key = "person1"
 
-    val metricsListener = new MetricsListener(new RecordedMetrics())
-    sc.addSparkListener(metricsListener)
-    Metrics.initialize(sc)
+    val start = setTime()
+    // case 1: get data from raw bam file
+    val alignmentRDD: RDD[(ReferenceRegion, (String,AlignmentRecord))] = getDataFromBamFile(bamFile, region, key)
+    println(alignmentRDD.count)
+    val time = getTime(start)
+    println("Timing for raw bam file")
+    println(time)
+    logInfo(time.toString)
+  }
 
-    //creating data
+  sparkTest("Time getting from interval rdd") {
+    val bamFile = "mouse_chrM.bam"
+    val region = new ReferenceRegion("chrM", 0L, 1050L)
+    val key = "person1"
+
+    // case 1: get data from raw bam file
     val alignmentRDD: RDD[(ReferenceRegion, (String,AlignmentRecord))] = getDataFromBamFile(bamFile, region, key)
 
     val sd = new SequenceDictionary(Vector(SequenceRecord("chr", 1000L),
       SequenceRecord("chr2", 1000L),
       SequenceRecord("chrM", 1000L)))
 
+    val metricsListener = new MetricsListener(new RecordedMetrics())
+    sc.addSparkListener(metricsListener)
+    Metrics.initialize(sc)
 
+    // create intervalrdd from bam file
     var intRDD: IntervalRDD[String, AlignmentRecord] = IntervalRDD(alignmentRDD, sd)
 
-    // get data from intRDD and alignmentRDD. Compare results
-    val results = alignmentRDD.filter(r => r._1.overlaps(region))
-    val intResults = intRDD.get(region, key)
+    val start = setTime()
 
+    // case 3: from interval rdd
+    val intResults = intRDD.get(region, key)
+    //println(intResults.count)
+
+    val time = getTime(start)
     val stringWriter = new StringWriter()
     val writer = new PrintWriter(stringWriter)
     Metrics.print(writer, Some(metricsListener.metrics.sparkMetrics.stageTimes))
     writer.flush()
     val timings = stringWriter.getBuffer.toString
     println(timings)
-    logInfo(timings)
 
+    println("Timings from interval rdd")
+    println(time)
+    logInfo(time.toString)
   }
+
+  sparkTest("Time getting from normal rdd") {
+    val bamFile = "mouse_chrM.bam"
+    val region = new ReferenceRegion("chrM", 0L, 1050L)
+    val key = "person1"
+
+    // case 1: get data from raw bam file
+    val alignmentRDD: RDD[(ReferenceRegion, (String,AlignmentRecord))] = getDataFromBamFile(bamFile, region, key)
+
+    // get data from intRDD and alignmentRDD. Compare results
+    // case 2: from normal rdd
+    val start = setTime()
+    val results = alignmentRDD.filter(r => r._1.overlaps(region))
+    println(results.count)
+
+    val time = getTime(start)
+    println("Timings from normal rdd")
+    println(time)
+    logInfo(time.toString)
+  }
+
 
 }

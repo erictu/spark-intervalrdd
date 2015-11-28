@@ -61,12 +61,12 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
 
   override protected def getPartitions: Array[Partition] = partitionsRDD.partitions
 
-  /** Provides the `RDD[(K, V)]` equivalent output. */
+  /** TODO: Provides the `RDD[(K, V)]` equivalent output. */
   override def compute(part: Partition, context: TaskContext): Iterator[V] = {
     null
   }
 
-  def get(region: ReferenceRegion, k: K): Map[K, V] = multiget(region, Option(Iterator(k)))
+  def get(region: ReferenceRegion, k: K): Map[K, V] = multiget(region, Option(List(k)))
 
   // Gets values corresponding to a single interval over multiple ids
   def get(region: ReferenceRegion): Map[K, V] = multiget(region, None)
@@ -75,17 +75,15 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
   * Assume that we're only getting data that exists (if it doesn't exist,
   * would have been handled by upper LazyMaterialization layer
   */
-  def multiget(region: ReferenceRegion, ks: Option[Iterator[K]]): Map[K, V] = IntervalTimers.MultigetTime.time {
-
+  def multiget(region: ReferenceRegion, ks: Option[List[K]]): Map[K, V] = IntervalTimers.MultigetTime.time {
     val ksByPartition: Int = partitioner.get.getPartition(region)
     val partitions: Seq[Int] = Array(ksByPartition).toSeq
 
+    // TODO: avoid sending all keys to all partitions by creating and zipping an RDD of keys
     val results: Array[Array[(K, V)]] = IntervalTimers.ResultsTime.time {
       context.runJob(partitionsRDD, (context: TaskContext, partIter: Iterator[IntervalPartition[K, V]]) => {
        if (partIter.hasNext && (ksByPartition == context.partitionId)) {
           val intPart = partIter.next()
-          val startTime = System.currentTimeMillis
-          // IntervalTimers.Match.time{
             ks match {
               case Some(_) => IntervalTimers.PartMG.time{intPart.multiget(region, ks.get).toArray}
               case None     => IntervalTimers.PartGA.time{intPart.get(region).toArray}
@@ -110,6 +108,7 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
       else {
         elems.partitionBy(new ReferencePartitioner(dict))
       }
+
     val convertedPartitions: RDD[IntervalPartition[K, V]] = partitioned.mapPartitions[IntervalPartition[K, V]](
       iter => Iterator(IntervalPartition(iter)),
       preservesPartitioning = true)
@@ -119,17 +118,13 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
     val newPartitionsRDD = partitionsRDD.zipPartitions(convertedPartitions, true)((aiter, biter) => merger(aiter, biter))
     new IntervalRDD(newPartitionsRDD)
   }
-
 }
 
 class PartitionMerger[K: ClassTag, V: ClassTag]() extends Serializable {
   def apply(thisIter: Iterator[IntervalPartition[K, V]], otherIter: Iterator[IntervalPartition[K, V]]): Iterator[IntervalPartition[K, V]] = {
-    var res: List[IntervalPartition[K,V]] = List()
-    while(thisIter.hasNext && otherIter.hasNext) {
-      val x = thisIter.next.mergePartitions(otherIter.next)
-      res ::= x
-    }
-    res.iterator
+    val thisPart = thisIter.next
+    val otherPart = otherIter.next
+    Iterator(thisPart.mergePartitions(otherPart))
   }
 }
 
