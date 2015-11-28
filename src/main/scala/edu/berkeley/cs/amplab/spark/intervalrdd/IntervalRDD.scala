@@ -76,7 +76,9 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
   * would have been handled by upper LazyMaterialization layer
   */
   def multiget(region: ReferenceRegion, ks: Option[List[S]]): Option[Map[ReferenceRegion, List[(S, V)]]] = IntervalTimers.MultigetTime.time { 
-
+    println("IRMULTIGET: START")
+    println("IRMULTIGET: REGION IS")
+    println(region)
     val ksByPartition: Int = partitioner.get.getPartition(region)
     val partitions: Seq[Int] = Array(ksByPartition).toSeq
 
@@ -95,6 +97,7 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
        }
       }, partitions, allowLocal = true)
     }
+    println("IRMULTIGET: DONE")
     Option(results.flatten.toMap)
   }
 
@@ -105,6 +108,7 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
    - something odd is happening when you try to merge partitions together of different partition keys
    **/
   def multiput(elems: RDD[(ReferenceRegion, (S,V))], dict: SequenceDictionary): IntervalRDD[S, V] = {
+    println("IRMULTIPUT START")
     val partitioned = 
       if (elems.partitioner.isDefined) elems
       else {
@@ -117,7 +121,10 @@ class IntervalRDD[S: ClassTag, V: ClassTag](
     // merge the new partitions with existing partitions
     val merger = new PartitionMerger[S, V]()
     val newPartitionsRDD = partitionsRDD.zipPartitions(convertedPartitions, true)((aiter, biter) => merger(aiter, biter))
-    new IntervalRDD(newPartitionsRDD)
+    
+    val returned = new IntervalRDD(newPartitionsRDD)
+    println("IRMULTIPUT DONE")
+    returned
   }
 
 }
@@ -139,6 +146,7 @@ object IntervalRDD extends Logging {
   * TODO: Support different partitioners
   */
   def apply[S: ClassTag, V: ClassTag](elems: RDD[(ReferenceRegion, (S, V))], dict: SequenceDictionary) : IntervalRDD[S, V] = IntervalTimers.InitTime.time {
+    println("IRAPPLY START")
     val partitioned = 
       if (elems.partitioner.isDefined) elems
       else {
@@ -147,7 +155,7 @@ object IntervalRDD extends Logging {
     val convertedPartitions: RDD[IntervalPartition[S, V]] = partitioned.mapPartitions[IntervalPartition[S, V]]( 
       iter => Iterator(IntervalPartition(iter)), 
       preservesPartitioning = true)
-
+    println("IRAPPLY DONE")
     new IntervalRDD(convertedPartitions) 
   }
 }

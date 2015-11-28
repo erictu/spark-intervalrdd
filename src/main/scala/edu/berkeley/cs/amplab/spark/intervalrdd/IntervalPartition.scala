@@ -72,6 +72,7 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
    * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
    */
   def multiget(ks: Iterator[(ReferenceRegion, List[K])]) : Iterator[(ReferenceRegion, List[(K, V)])] = PartTimers.PartGetTime.time {
+    println("IPMULTIGET")
     var input = ks.map { k => (k._1, iTree.search(k._1, k._2))  }
     filterByRegion(input)    
   }
@@ -83,10 +84,13 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
    */
   def multiput(
       kvs: Iterator[(ReferenceRegion, List[(K, V)])]): IntervalPartition[K, V] = PartTimers.PartPutTime.time {
+    println("IPMULTIPUT: START")
     val newTree = iTree.snapshot()
     for (ku <- kvs) {
+      println(ku._1)
       newTree.insert(ku._1, ku._2)
     }
+    println("IPMULTIPUT: DONE")
     this.withMap(newTree)
   }
 
@@ -107,7 +111,7 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
    */
   private def filterByRegion(iter: Iterator[(ReferenceRegion, List[(K, V)])]): Iterator[(ReferenceRegion, List[(K, V)])] = PartTimers.FilterTime.time {
     var newIter: ListBuffer[(ReferenceRegion, List[(K, V)])] = new ListBuffer[(ReferenceRegion, List[(K, V)])]()
-
+    println("IPFILTERBYREGION")
     // filters
     if (classOf[List[AlignmentRecord]].isAssignableFrom(classTag[V].runtimeClass)) {
       val aiter = iter.asInstanceOf[Iterator[(ReferenceRegion, List[(K, List[AlignmentRecord])])]]
@@ -132,13 +136,15 @@ private[intervalrdd] object IntervalPartition {
 
   def apply[K: ClassTag, V: ClassTag]
       (iter: Iterator[(ReferenceRegion, (K, V))]): IntervalPartition[K, V] = {
+    println("IPAPPLY: START")
     val map = new IntervalTree[K, V]()
     iter.foreach { 
       ku => {
+        println(ku._1)
         map.insert(ku._1, ku._2) 
       }
     }
-
+    println("IPAPPLY: DONE")
     new IntervalPartition(map)
   }
 }
