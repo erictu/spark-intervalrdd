@@ -78,16 +78,16 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
   def multiget(region: ReferenceRegion, ks: Option[List[K]]): Map[K, V] = IntervalTimers.MultigetTime.time {
     val ksByPartition: Int = partitioner.get.getPartition(region)
     val partitions: Seq[Int] = Array(ksByPartition).toSeq
+    val filteredPartitions:  RDD[IntervalPartition[K, V]] = partitionsRDD.filter(r => region.overlaps(r.getRegion))
 
-    // TODO: avoid sending all keys to all partitions by creating and zipping an RDD of keys
     val results: Array[Array[(K, V)]] = IntervalTimers.ResultsTime.time {
-      context.runJob(partitionsRDD, (context: TaskContext, partIter: Iterator[IntervalPartition[K, V]]) => {
+      context.runJob(filteredPartitions, (context: TaskContext, partIter: Iterator[IntervalPartition[K, V]]) => {
        if (partIter.hasNext && (ksByPartition == context.partitionId)) {
           val intPart = partIter.next()
-            ks match {
-              case Some(_) => IntervalTimers.PartMG.time{intPart.multiget(region, ks.get).toArray}
-              case None     => IntervalTimers.PartGA.time{intPart.get(region).toArray}
-            }
+          ks match {
+            case Some(_) =>  IntervalTimers.PartMG.time{intPart.multiget(region, ks.get).toArray}
+            case None     => IntervalTimers.PartGA.time{intPart.get(region).toArray}
+          }
        } else {
           Array.empty
        }
@@ -96,6 +96,14 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
     results.flatten.toMap
   }
 
+  // TODO: remove code
+  def setTime(): Double = {
+    System.nanoTime()
+  }
+  def getTime(start: Double): Double = {
+    val time = (System.nanoTime() - start)
+    time/1e9
+  }
 
   /**
    * Unconditionally updates the specified keys to have the specified value. Returns a new IntervalRDD
