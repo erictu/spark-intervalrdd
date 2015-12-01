@@ -40,14 +40,10 @@ object PartTimers extends Metrics {
 }
 
 class IntervalPartition[K: ClassTag, V: ClassTag]
-	(protected val iTree: IntervalTree[K, V], region: ReferenceRegion) extends Serializable with Logging {
-
-  def getRegion(): ReferenceRegion = {
-    return region
-  }
+	(protected val iTree: IntervalTree[K, V]) extends Serializable with Logging {
 
   def this() {
-    this(new IntervalTree[K, V](), null)
+    this(new IntervalTree[K, V]())
   }
 
   def getTree(): IntervalTree[K, V] = {
@@ -55,8 +51,8 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
   }
 
   protected def withMap
-      (map: IntervalTree[K, V], region: ReferenceRegion): IntervalPartition[K, V] = {
-    new IntervalPartition(map, region)
+      (map: IntervalTree[K, V]): IntervalPartition[K, V] = {
+    new IntervalPartition(map)
   }
 
   /**
@@ -86,6 +82,14 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
     iTree.search(r, ks)
   }
 
+  // TODO: remove code
+  def setTime(): Double = {
+    System.nanoTime()
+  }
+  def getTime(start: Double): Double = {
+    val time = (System.nanoTime() - start)
+    time/1e9
+  }
   /**
    * Puts all (k,v) data from partition within the specificed referenceregion
    *
@@ -94,7 +98,7 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
   def multiput(r: ReferenceRegion, kvs: Iterator[(K, V)]): IntervalPartition[K, V] = PartTimers.PartPutTime.time {
     val newTree = iTree.snapshot()
     newTree.insert(r, kvs)
-    this.withMap(newTree, r)
+    this.withMap(newTree)
   }
 
   /**
@@ -104,7 +108,7 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
    */
   def mergePartitions(p: IntervalPartition[K, V]): IntervalPartition[K, V] = {
     val newTree = iTree.merge(p.getTree)
-    this.withMap(newTree, this.getRegion)
+    this.withMap(newTree)
   }
 }
 
@@ -113,24 +117,12 @@ private[intervalrdd] object IntervalPartition {
   def apply[K: ClassTag, V: ClassTag]
       (iter: Iterator[(ReferenceRegion, (K, V))]): IntervalPartition[K, V] = {
 
-    // TODO: is there a better way to set this value?
-    var referenceName = "null"
-    var max: Long = 0
-    var min: Long =Long.MaxValue
-
     val map = new IntervalTree[K, V]()
     iter.foreach {
       ku => {
-        if (referenceName == "null") {
-          referenceName = ku._1.referenceName
-        }
-        if (ku._1.start < min)
-          min = ku._1.start
-        if (ku._1.end > max)
-          max = ku._1.end
         map.insert(ku._1, ku._2)
       }
     }
-    new IntervalPartition(map, new ReferenceRegion(referenceName, min, max))
+    new IntervalPartition(map)
   }
 }
