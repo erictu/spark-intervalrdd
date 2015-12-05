@@ -116,6 +116,7 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
         elems.partitionBy(new ReferencePartitioner(dict))
       } 
       else {
+        println("INTERVALRDD MULTIPUT: PARTITIONER IS NOT DEFINED")
         elems.partitionBy(new ReferencePartitioner(dict))
       }
 
@@ -150,11 +151,12 @@ object IntervalRDD extends Logging {
         elems.partitionBy(new ReferencePartitioner(dict))
       } 
       else {
+        println("INTERVALRDD APPLY: PARTITIONER IS NOT DEFINED")
         elems.partitionBy(new ReferencePartitioner(dict))
       }
     val convertedPartitions: RDD[IntervalPartition[K, V]] = partitioned.mapPartitions[IntervalPartition[K, V]](
       iter => Iterator(IntervalPartition(iter)),
-      preservesPartitioning = true)
+      preservesPartitioning = false)
 
     new IntervalRDD(convertedPartitions)
   }
