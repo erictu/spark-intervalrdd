@@ -156,7 +156,7 @@ object IntervalRDD extends Logging {
       }
     val convertedPartitions: RDD[IntervalPartition[K, V]] = partitioned.mapPartitions[IntervalPartition[K, V]](
       iter => Iterator(IntervalPartition(iter)),
-      preservesPartitioning = false)
+      preservesPartitioning = true)
 
     new IntervalRDD(convertedPartitions)
   }
