@@ -111,7 +111,10 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
    **/
   def multiput(elems: RDD[(ReferenceRegion, (K,V))], dict: SequenceDictionary): IntervalRDD[K, V] = {
     val partitioned =
-      if (elems.partitioner.isDefined) elems
+      if (elems.partitioner.isDefined) {
+        println("INTERVALRDD MULTIPUT: PARTITIONER IS DEFINED")
+        elems.partitionBy(new ReferencePartitioner(dict))
+      } 
       else {
         elems.partitionBy(new ReferencePartitioner(dict))
       }
@@ -143,7 +146,7 @@ object IntervalRDD extends Logging {
   def apply[K: ClassTag, V: ClassTag](elems: RDD[(ReferenceRegion, (K, V))], dict: SequenceDictionary) : IntervalRDD[K, V] = IntervalTimers.InitTime.time {
     val partitioned =
       if (elems.partitioner.isDefined) {
-        println("INTERVALRDD: PARTITIONER IS DEFINED")
+        println("INTERVALRDD APPLY: PARTITIONER IS DEFINED")
         elems.partitionBy(new ReferencePartitioner(dict))
       } 
       else {
