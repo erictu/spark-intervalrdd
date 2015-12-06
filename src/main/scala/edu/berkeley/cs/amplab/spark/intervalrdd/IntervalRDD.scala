@@ -64,6 +64,34 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
   /** TODO: Provides the `RDD[(K, V)]` equivalent output. */
   override def compute(part: Partition, context: TaskContext): Iterator[V] = {
     null
+
+  }
+  /** The number of edges in the RDD. */
+  override def count(): Long = {
+    partitionsRDD.map(_.getTree.size).reduce(_ + _)
+  }
+
+  //override def collect(): Array[(K, V)] = this.map(r => ("1", "1")).collect()
+
+  def filterByRegion(r: ReferenceRegion): IntervalRDD[K, V] = {
+    mapIntervalPartitions(r, (part) => part.filter(r))
+  }
+
+  def mapIntervalPartitions(r: ReferenceRegion,
+      f: (IntervalPartition[K, V]) => IntervalPartition[K, V]): IntervalRDD[K, V] = {
+    this.withPartitionsRDD[K, V](partitionsRDD.mapPartitions({ iter =>
+      if (iter.hasNext) {
+        val p = iter.next()
+        Iterator(p.filter(r))
+      } else {
+        Iterator.empty
+      }
+    }, preservesPartitioning = true))
+  }
+
+  private def withPartitionsRDD[K2: ClassTag, V2: ClassTag](
+      partitionsRDD: RDD[IntervalPartition[K2, V2]]): IntervalRDD[K2, V2] = {
+    new IntervalRDD(partitionsRDD)
   }
 
   def get(region: ReferenceRegion, k: K): Map[K, V] = multiget(region, Option(List(k)))
@@ -93,15 +121,6 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
       }, partitions, allowLocal = true)
     }
     results.flatten.toMap
-  }
-
-  // TODO: remove code
-  def setTime(): Double = {
-    System.nanoTime()
-  }
-  def getTime(start: Double): Double = {
-    val time = (System.nanoTime() - start)
-    time/1e9
   }
 
   /**
@@ -152,4 +171,9 @@ object IntervalRDD extends Logging {
 
     new IntervalRDD(convertedPartitions)
   }
+
+  def apply[K: ClassTag, V: ClassTag](elems: RDD[IntervalPartition[K, V]]) : IntervalRDD[K, V] = {
+    new IntervalRDD(elems)
+  }
+
 }

@@ -55,25 +55,25 @@ object TestTimers extends Metrics {
 
 class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
-  sparkTest("Get data from different samples at the same region") {
-    val bamFile = "./mouse_chrM_p1.bam"
-    val sample1 = "person1"
-    val sample2 = "person2"
-
-      val region = new ReferenceRegion("chrM", 0L, 100L)
-      val sd = new SequenceDictionary(Vector(SequenceRecord("chrM", 1000L)))
-      val rdd: RDD[AlignmentRecord] = sc.loadIndexedBam(bamFile, region)
-      val alignmentRDD: RDD[(ReferenceRegion, (String,AlignmentRecord))] = rdd.map(v => (region, (sample1, v)))
-
-      var intRDD: IntervalRDD[String, AlignmentRecord] = IntervalRDD(alignmentRDD, sd)
-
-      val alignmentRDD2: RDD[(ReferenceRegion, (String,AlignmentRecord))] = alignmentRDD.map(v => (v._1, (sample2, v._2._2)))
-
-      val newIRDD = intRDD.multiput(alignmentRDD2, sd)
-
-      val results: Map[String, AlignmentRecord] = newIRDD.multiget(region, Option(List(sample1, sample2)))
-
-  }
+  // sparkTest("Get data from different samples at the same region") {
+  //   val bamFile = "./mouse_chrM_p1.bam"
+  //   val sample1 = "person1"
+  //   val sample2 = "person2"
+  //
+  //     val region = new ReferenceRegion("chrM", 0L, 100L)
+  //     val sd = new SequenceDictionary(Vector(SequenceRecord("chrM", 1000L)))
+  //     val rdd: RDD[AlignmentRecord] = sc.loadIndexedBam(bamFile, region)
+  //     val alignmentRDD: RDD[(ReferenceRegion, (String,AlignmentRecord))] = rdd.map(v => (region, (sample1, v)))
+  //
+  //     var intRDD: IntervalRDD[String, AlignmentRecord] = IntervalRDD(alignmentRDD, sd)
+  //
+  //     val alignmentRDD2: RDD[(ReferenceRegion, (String,AlignmentRecord))] = alignmentRDD.map(v => (v._1, (sample2, v._2._2)))
+  //
+  //     val newIRDD = intRDD.multiput(alignmentRDD2, sd)
+  //
+  //     val results: Map[String, AlignmentRecord] = newIRDD.multiget(region, Option(List(sample1, sample2)))
+  //
+  // }
 
 
   // sparkTest("create IntervalRDD from RDD using apply") {
@@ -374,4 +374,31 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
   //
   // }
 
+
+  sparkTest("test new rdd") {
+
+    val region: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
+
+    //creating data
+    val rec1: (String, String) = ("per1", "p1 0-99")
+    val rec2: (String, String) = ("per2", "p2 100-199")
+    val rec3: (String, String) = ("per3", "p3 200-299")
+    val rec4: (String, String) = ("per4", "p4 100-199")
+    val rec5: (String, String) = ("per5", "p5 200-299")
+    val rec6: (String, String) = ("per6", "p6 300-399")
+
+    var intArr = Array((region, rec1), (region, rec2), (region, rec3))
+    var intArrRDD: RDD[(ReferenceRegion, (String, String))] = sc.parallelize(intArr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L)))
+
+    var testRDD: IntervalRDD[String, String] = IntervalRDD(intArrRDD, sd)
+
+    val r: ReferenceRegion = new ReferenceRegion("chr1", 0L, 100L)
+    val newRDD = testRDD.filterByRegion(r)
+    println(newRDD.count)
+    println(testRDD.count)
+    //testRDD.collect
+
+  }
 }

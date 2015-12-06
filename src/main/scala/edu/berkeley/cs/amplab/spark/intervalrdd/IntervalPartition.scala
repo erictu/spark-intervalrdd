@@ -64,6 +64,12 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
     iTree.search(r)
   }
 
+  // TODO: test
+  def filter(r: ReferenceRegion): IntervalPartition[K, V] = {
+    val i: Iterator[(K, V)] = iTree.search(r)
+    IntervalPartition(r, i)
+  }
+
   /**
    * Gets data from partition within the specificed referenceregion and key k.
    *
@@ -82,14 +88,6 @@ class IntervalPartition[K: ClassTag, V: ClassTag]
     iTree.search(r, ks)
   }
 
-  // TODO: remove code
-  def setTime(): Double = {
-    System.nanoTime()
-  }
-  def getTime(start: Double): Double = {
-    val time = (System.nanoTime() - start)
-    time/1e9
-  }
   /**
    * Puts all (k,v) data from partition within the specificed referenceregion
    *
@@ -121,6 +119,18 @@ private[intervalrdd] object IntervalPartition {
     iter.foreach {
       ku => {
         map.insert(ku._1, ku._2)
+      }
+    }
+    new IntervalPartition(map)
+  }
+
+  def apply[K: ClassTag, V: ClassTag]
+      (r: ReferenceRegion, iter: Iterator[(K, V)]): IntervalPartition[K, V] = {
+
+    val map = new IntervalTree[K, V]()
+    iter.foreach {
+      ku => {
+        map.insert(r, ku)
       }
     }
     new IntervalPartition(map)
