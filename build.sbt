@@ -26,6 +26,9 @@ libraryDependencies += "org.bdgenomics.adam" %% "adam-core" % "0.18.0"
 libraryDependencies += "org.bdgenomics.adam" %% "adam-core" % "0.18.0" % "test" classifier "tests"
 libraryDependencies += "org.bdgenomics.utils" %% "utils-misc" % "0.2.3" % "test" classifier "tests"
 
+resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
+
+libraryDependencies += "amplab" % "spark-indexedrdd" % "0.3"
 
 javaOptions in test += "-Xmx1024m"
 javaOptions in test += "-Xms1024m"

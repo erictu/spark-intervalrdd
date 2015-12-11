@@ -122,8 +122,6 @@ class IntervalRDD[V: ClassTag](
 
   /**
    * Unconditionally updates the specified keys to have the specified value. Returns a new IntervalRDD
-   - outstanding issues: zipPartitions can only work for rdds of the same size
-   - something odd is happening when you try to merge partitions together of different partition keys
    **/
   def multiput(elems: RDD[(ReferenceRegion, V)], dict: SequenceDictionary): IntervalRDD[V] = {
     val partitioned =
