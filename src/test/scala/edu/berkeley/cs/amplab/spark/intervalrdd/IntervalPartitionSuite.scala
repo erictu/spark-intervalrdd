@@ -28,7 +28,7 @@ class IntervalPartitionSuite extends FunSuite  {
 
 	test("create new partition") {
 		val region = new ReferenceRegion("chr", 0, 100)
-		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
+		var partition: IntervalPartition[Long] = new IntervalPartition[Long]()
 		assert(partition != null)
 	}
 
@@ -37,8 +37,8 @@ class IntervalPartitionSuite extends FunSuite  {
 		val region1: ReferenceRegion = new ReferenceRegion(chr, 0L, 99L)
 		val region2: ReferenceRegion = new ReferenceRegion(chr,100L, 199L)
 
-		val read1 = (1L,2L)
-		val read2 = (1L,4L)
+		val read1 = 2L
+		val read2 = 4L
 
 
 		val iter = Iterator((region1, read1), (region2, read1))
@@ -52,15 +52,15 @@ class IntervalPartitionSuite extends FunSuite  {
 		val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
 		val region2: ReferenceRegion = new ReferenceRegion(chr1,100L, 199L)
 
-		val read1 = (1L,2L)
-		val read2 = (1L,500L)
-		val read3 = (2L, 2L)
-		val read4 =  (2L, 500L)
+		val read1 = 2L
+		val read2 = 500L
+		val read3 = 2L
+		val read4 =  500L
 
 		val iter = Iterator((region1, read1), (region2, read2), (region1, read3), (region2, read4))
 		val partition = IntervalPartition(iter)
 
-		var results: List[(Long, Long)] = partition.get(region1).toList
+		var results: List[Long] = partition.get(region1).toList
 		results = results ++ partition.get(region2).toList
 
 		assert(results.contains(read1))
@@ -76,18 +76,18 @@ class IntervalPartitionSuite extends FunSuite  {
 		val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
 		val region2: ReferenceRegion = new ReferenceRegion(chr1, 100L, 199L)
 
-		val read1 = (1L,2L)
-		val read2 = (1L,500L)
-		val read3 = (2L, 2L)
-		val read4 =  (2L, 500L)
+		val read1 = 2L
+		val read2 = 500L
+		val read3 = 2L
+		val read4 = 500L
 
-		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
+		var partition: IntervalPartition[Long] = new IntervalPartition[Long]()
 
 		var newPartition = partition.multiput(region1, Iterator(read1, read3))
 		newPartition = newPartition.multiput(region2, Iterator(read2, read4))
 
 		// assert values are in the new partition
-		var results: List[(Long, Long)] = newPartition.get(region1).toList
+		var results: List[Long] = newPartition.get(region1).toList
 		results = results ++ newPartition.get(region2).toList
 
 		assert(results.contains(read1))
@@ -111,8 +111,8 @@ class IntervalPartitionSuite extends FunSuite  {
 		val iter = Iterator((region1, read1), (region2, read2), (region1, read3), (region2, read4))
 		val partition = IntervalPartition(iter)
 
-		var results = partition.get(region1, 1L).toList
-		results = results ++ partition.get(region2, 2L).toList
+		var results = partition.get(region1).toList
+		results = results ++ partition.get(region2).toList
 
 		assert(results.contains(read1))
 		assert(results.contains(read4))
@@ -124,13 +124,13 @@ class IntervalPartitionSuite extends FunSuite  {
 		val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
 		val region2: ReferenceRegion = new ReferenceRegion(chr1, 100L, 199L)
 
-		val read1 = (1L,2L)
-		val read2 = (1L,500L)
-		val read3 = (2L, 2L)
-		val read4 = (2L, 500L)
-		val read5 = (3L, 500L)
+		val read1 = 2L
+		val read2 = 500L
+		val read3 = 2L
+		val read4 = 500L
+		val read5 = 500L
 
-		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
+		var partition: IntervalPartition[Long] = new IntervalPartition[Long]()
 		val iter1 = Iterator(read1, read3)
 		val iter2 = Iterator(read4, read2, read5)
 
@@ -138,7 +138,7 @@ class IntervalPartitionSuite extends FunSuite  {
 		newPartition = newPartition.multiput(region2, iter2)
 
 		// assert values are in the new partition
-		var results: List[(Long, Long)] = newPartition.get(region1).toList
+		var results: List[Long] = newPartition.get(region1).toList
 		results = results ++ newPartition.get(region2).toList
 
 		assert(results.contains(read1))
@@ -152,20 +152,20 @@ class IntervalPartitionSuite extends FunSuite  {
 
 	test("putting then getting a region that overlaps 3 regions") {
 		val chr1 = "chr1"
-		val regionKey: ReferenceRegion = new ReferenceRegion(chr1, 0, 800)
+		val regionKey: ReferenceRegion = new ReferenceRegion(chr1, 0, 800L)
 		val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
 		val region2: ReferenceRegion = new ReferenceRegion(chr1, 100L, 199L)
 		val region3: ReferenceRegion = new ReferenceRegion(chr1, 150L, 300L)
 		val region4: ReferenceRegion = new ReferenceRegion(chr1, 350L, 700L)
 
-		val read1 = (1L,2L)
-		val read2 = (1L,500L)
-		val read3 = (2L, 2L)
-		val read4 = (2L, 500L)
-		val read5 = (3L, 500L)
-		val read6 = (4L, 250L)
+		val read1 = 2L
+		val read2 = 500L
+		val read3 = 3L
+		val read4 = 700L
+		val read5 = 900L
+		val read6 = 250L
 
-		var partition: IntervalPartition[Long, Long] = new IntervalPartition[Long, Long]()
+		var partition: IntervalPartition[Long] = new IntervalPartition[Long]()
 
 		var newPartition = partition.multiput(region1, Iterator(read1, read3))
 		newPartition = newPartition.multiput(region2, Iterator(read2, read4))

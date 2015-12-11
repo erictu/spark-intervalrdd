@@ -47,15 +47,13 @@ object IntervalTimers extends Metrics {
   val Match = timer("KS Match")
 }
 
-// K = chr, interval
-// S = sec key
-// V = data
-class IntervalRDD[K: ClassTag, V: ClassTag](
+class IntervalRDD[V: ClassTag](
     /** The underlying representation of the IndexedRDD as an RDD of partitions. */
-    private val partitionsRDD: RDD[IntervalPartition[K, V]])
+    private val partitionsRDD: RDD[IntervalPartition[V]])
   extends RDD[(V)](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) with Logging {
 
   require(partitionsRDD.partitioner.isDefined)
+  partitionsRDD.persist()
 
   override val partitioner = partitionsRDD.partitioner
 
@@ -66,20 +64,27 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
     null
 
   }
+
+  /** Persists the edge partitions using `targetStorageLevel`, which defaults to MEMORY_ONLY. */
+  override def cache(): this.type = {
+    partitionsRDD.persist()
+    this
+  }
+
   /** The number of edges in the RDD. */
   override def count(): Long = {
     partitionsRDD.map(_.getTree.size).reduce(_ + _)
   }
 
-  //override def collect(): Array[(K, V)] = this.map(r => ("1", "1")).collect()
+  // override def collect(): Array[(K, V)] = partitionsRDD.map(r => r.getAll()).collect()
 
-  def filterByRegion(r: ReferenceRegion): IntervalRDD[K, V] = {
+  def filterByRegion(r: ReferenceRegion): IntervalRDD[V] = {
     mapIntervalPartitions(r, (part) => part.filter(r))
   }
 
   def mapIntervalPartitions(r: ReferenceRegion,
-      f: (IntervalPartition[K, V]) => IntervalPartition[K, V]): IntervalRDD[K, V] = {
-    this.withPartitionsRDD[K, V](partitionsRDD.mapPartitions({ iter =>
+      f: (IntervalPartition[V]) => IntervalPartition[V]): IntervalRDD[V] = {
+    this.withPartitionsRDD[V](partitionsRDD.mapPartitions({ iter =>
       if (iter.hasNext) {
         val p = iter.next()
         Iterator(p.filter(r))
@@ -89,38 +94,30 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
     }, preservesPartitioning = true))
   }
 
-  private def withPartitionsRDD[K2: ClassTag, V2: ClassTag](
-      partitionsRDD: RDD[IntervalPartition[K2, V2]]): IntervalRDD[K2, V2] = {
+  private def withPartitionsRDD[V2: ClassTag](
+      partitionsRDD: RDD[IntervalPartition[V2]]): IntervalRDD[V2] = {
     new IntervalRDD(partitionsRDD)
   }
-
-  def get(region: ReferenceRegion, k: K): Map[K, V] = multiget(region, Option(List(k)))
-
-  // Gets values corresponding to a single interval over multiple ids
-  def get(region: ReferenceRegion): Map[K, V] = multiget(region, None)
 
   /** Gets the values corresponding to the specified key, if any
   * Assume that we're only getting data that exists (if it doesn't exist,
   * would have been handled by upper LazyMaterialization layer
   */
-  def multiget(region: ReferenceRegion, ks: Option[List[K]]): Map[K, V] = IntervalTimers.MultigetTime.time {
+  def get(region: ReferenceRegion): List[V] = IntervalTimers.MultigetTime.time {
     val ksByPartition: Int = partitioner.get.getPartition(region)
     val partitions: Seq[Int] = Array(ksByPartition).toSeq
 
-    val results: Array[Array[(K, V)]] = IntervalTimers.ResultsTime.time {
-      context.runJob(partitionsRDD, (context: TaskContext, partIter: Iterator[IntervalPartition[K, V]]) => {
+    val results: Array[Array[V]] = IntervalTimers.ResultsTime.time {
+      context.runJob(partitionsRDD, (context: TaskContext, partIter: Iterator[IntervalPartition[V]]) => {
        if (partIter.hasNext && (ksByPartition == context.partitionId)) {
           val intPart = partIter.next()
-          ks match {
-            case Some(_) =>  IntervalTimers.PartMG.time{intPart.multiget(region, ks.get).toArray}
-            case None     => IntervalTimers.PartGA.time{intPart.get(region).toArray}
-          }
+          intPart.get(region).toArray
        } else {
           Array.empty
        }
       }, partitions, allowLocal = true)
     }
-    results.flatten.toMap
+    results.flatten.toList
   }
 
   /**
@@ -128,26 +125,26 @@ class IntervalRDD[K: ClassTag, V: ClassTag](
    - outstanding issues: zipPartitions can only work for rdds of the same size
    - something odd is happening when you try to merge partitions together of different partition keys
    **/
-  def multiput(elems: RDD[(ReferenceRegion, (K,V))], dict: SequenceDictionary): IntervalRDD[K, V] = {
+  def multiput(elems: RDD[(ReferenceRegion, V)], dict: SequenceDictionary): IntervalRDD[V] = {
     val partitioned =
       if (elems.partitioner.isDefined) elems
       else {
         elems.partitionBy(new ReferencePartitioner(dict))
       }
 
-    val convertedPartitions: RDD[IntervalPartition[K, V]] = partitioned.mapPartitions[IntervalPartition[K, V]](
+    val convertedPartitions: RDD[IntervalPartition[V]] = partitioned.mapPartitions[IntervalPartition[V]](
       iter => Iterator(IntervalPartition(iter)),
       preservesPartitioning = true)
 
     // merge the new partitions with existing partitions
-    val merger = new PartitionMerger[K, V]()
+    val merger = new PartitionMerger[V]()
     val newPartitionsRDD = partitionsRDD.zipPartitions(convertedPartitions, true)((aiter, biter) => merger(aiter, biter))
     new IntervalRDD(newPartitionsRDD)
   }
 }
 
-class PartitionMerger[K: ClassTag, V: ClassTag]() extends Serializable {
-  def apply(thisIter: Iterator[IntervalPartition[K, V]], otherIter: Iterator[IntervalPartition[K, V]]): Iterator[IntervalPartition[K, V]] = {
+class PartitionMerger[V: ClassTag]() extends Serializable {
+  def apply(thisIter: Iterator[IntervalPartition[V]], otherIter: Iterator[IntervalPartition[V]]): Iterator[IntervalPartition[V]] = {
     val thisPart = thisIter.next
     val otherPart = otherIter.next
     Iterator(thisPart.mergePartitions(otherPart))
@@ -159,20 +156,20 @@ object IntervalRDD extends Logging {
   * Constructs an updatable IntervalRDD from an RDD of a BDGFormat where partitioned by chromosome
   * TODO: Support different partitioners
   */
-  def apply[K: ClassTag, V: ClassTag](elems: RDD[(ReferenceRegion, (K, V))], dict: SequenceDictionary) : IntervalRDD[K, V] = IntervalTimers.InitTime.time {
+  def apply[V: ClassTag](elems: RDD[(ReferenceRegion, V)], dict: SequenceDictionary) : IntervalRDD[V] = IntervalTimers.InitTime.time {
     val partitioned =
       if (elems.partitioner.isDefined) elems
       else {
         elems.partitionBy(new ReferencePartitioner(dict))
       }
-    val convertedPartitions: RDD[IntervalPartition[K, V]] = partitioned.mapPartitions[IntervalPartition[K, V]](
+    val convertedPartitions: RDD[IntervalPartition[V]] = partitioned.mapPartitions[IntervalPartition[V]](
       iter => Iterator(IntervalPartition(iter)),
       preservesPartitioning = true)
 
     new IntervalRDD(convertedPartitions)
   }
 
-  def apply[K: ClassTag, V: ClassTag](elems: RDD[IntervalPartition[K, V]]) : IntervalRDD[K, V] = {
+  def apply[V: ClassTag](elems: RDD[IntervalPartition[V]]) : IntervalRDD[V] = {
     new IntervalRDD(elems)
   }
 
