@@ -3,4 +3,4 @@ target/
 bin/
 .DS_Store
 adam.log
-mouse_*
+mouse*
