@@ -299,25 +299,4 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 //
 //   }
 
-  test("bench") {
-    // Testing overhead on 3 different files
-    val fp = "./mouse.adam"
-  //  val dict = sc.adamDictionaryLoad[AlignmentRecord](fp)
-    val dict = new SequenceDictionary(Vector(SequenceRecord("chrM", 1000L)))
-    val origRDD: RDD[AlignmentRecord] = sc.loadAlignments(fp)
-    val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = origRDD.map(v => ((ReferenceRegion(v)), v))
-    var intRDD: IntervalRDD[AlignmentRecord] = IntervalRDD(alignmentRDD, dict)
-    intRDD.count
-
-    // Overhead on naive rdd
-    alignmentRDD.count
-    val iRDD: RDD[((Long, Long), AlignmentRecord)] = origRDD.map(v => ((v.start, v.end), v))
-    import edu.berkeley.cs.amplab.spark.indexedrdd.IndexedRDD
-    import edu.berkeley.cs.amplab.spark.indexedrdd.IndexedRDD._
-    val indexed = IndexedRDD(iRDD).cache()
-
-    // Overhead on partitioned rdd
-    // val partitionedRDD = alignmentRDD.partitionBy(new ReferencePartitioner(dict))
-    // partitionedRDD.count
-  }
 }

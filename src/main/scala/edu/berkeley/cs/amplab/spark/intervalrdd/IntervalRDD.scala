@@ -76,7 +76,7 @@ class IntervalRDD[V: ClassTag](
     partitionsRDD.map(_.getTree.size).reduce(_ + _)
   }
 
-  // override def collect(): Array[(K, V)] = partitionsRDD.map(r => r.getAll()).collect()
+  override def collect(): Array[V] = partitionsRDD.flatMap(r => r.get()).collect()
 
   def filterByRegion(r: ReferenceRegion): IntervalRDD[V] = {
     mapIntervalPartitions(r, (part) => part.filter(r))

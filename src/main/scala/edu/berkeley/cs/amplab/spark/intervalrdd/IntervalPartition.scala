@@ -63,6 +63,15 @@ class IntervalPartition[V: ClassTag]
     iTree.search(r)
   }
 
+  /**
+   * Gets all (k,v) data from partition
+   *
+   * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
+   */
+  def get(): Iterator[V] = {
+    iTree.get.toIterator
+  }
+
   // TODO: test
   def filter(r: ReferenceRegion): IntervalPartition[V] = {
     val i: Iterator[V] = iTree.search(r)
