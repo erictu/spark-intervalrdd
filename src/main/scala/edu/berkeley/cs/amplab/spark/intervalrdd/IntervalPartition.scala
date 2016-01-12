@@ -78,7 +78,7 @@ class IntervalPartition[V: ClassTag]
    *
    * @return IntervalPartition with new data
    */
-  def multiput(r: ReferenceRegion, vs: Iterator[V]): IntervalPartition[V] = PartTimers.PartPutTime.time {
+  def multiput(r: ReferenceRegion, vs: Iterator[V]): IntervalPartition[V] = {
     val newTree = iTree.snapshot()
     newTree.insert(r, vs)
     this.withMap(newTree)
@@ -120,7 +120,6 @@ private[intervalrdd] object IntervalPartition {
       (r: ReferenceRegion, iter: Iterator[V]): IntervalPartition[V] = {
     val map = new IntervalTree[V]()
     map.insert(r, iter)
-    }
     new IntervalPartition(map)
   }
 }

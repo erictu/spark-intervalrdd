@@ -49,7 +49,8 @@ class IntervalRDD[V: ClassTag](
 
   /** Provides the `RDD[(K, V)]` equivalent output. */
   override def compute(part: Partition, context: TaskContext): Iterator[V] = {
-    firstParent[IntervalPartition[V].iterator(part, context).next.iterator
+    // TODO
+    null
   }
 
   /** Persists the edge partitions using `targetStorageLevel`, which defaults to MEMORY_ONLY. */
@@ -74,12 +75,6 @@ class IntervalRDD[V: ClassTag](
     mapIntervalPartitions(r, (part) => part.filter(r))
   }
 
-  // diff
-
-  // join
-
-  // outer join
-
   def mapIntervalPartitions(r: ReferenceRegion,
       f: (IntervalPartition[V]) => IntervalPartition[V]): IntervalRDD[V] = {
     this.withPartitionsRDD[V](partitionsRDD.mapPartitions({ iter =>
@@ -101,11 +96,11 @@ class IntervalRDD[V: ClassTag](
   * Assume that we're only getting data that exists (if it doesn't exist,
   * would have been handled by upper LazyMaterialization layer
   */
-  def get(region: ReferenceRegion): List[V] = IntervalTimers.MultigetTime.time {
+  def get(region: ReferenceRegion): List[V] = {
     val ksByPartition: Int = partitioner.get.getPartition(region)
     val partitions: Seq[Int] = Array(ksByPartition).toSeq
 
-    val results: Array[Array[V]] = IntervalTimers.ResultsTime.time {
+    val results: Array[Array[V]] = {
       context.runJob(partitionsRDD, (context: TaskContext, partIter: Iterator[IntervalPartition[V]]) => {
        if (partIter.hasNext && (ksByPartition == context.partitionId)) {
           val intPart = partIter.next()
@@ -152,7 +147,7 @@ object IntervalRDD extends Logging {
   /**
   * Constructs an IntervalRDD from a set of ReferenceRegion, V tuples
   */
-  def apply[V: ClassTag](elems: RDD[(ReferenceRegion, V)], dict: SequenceDictionary) : IntervalRDD[V] = IntervalTimers.InitTime.time {
+  def apply[V: ClassTag](elems: RDD[(ReferenceRegion, V)], dict: SequenceDictionary) : IntervalRDD[V] = {
     val partitioned =
       if (elems.partitioner.isDefined) elems
       else {
