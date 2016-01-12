@@ -36,38 +36,30 @@ import scala.collection.mutable.ListBuffer
 
 import com.github.akmorrow13.intervaltree._
 
-
-object IntervalTimers extends Metrics {
-  val MultigetTime = timer("Multiget timer")
-  val MultiputTime = timer("Multiput timer")
-  val InitTime = timer("Initialize RDD")
-  val ResultsTime = timer("Results Job")
-  val PartMG = timer("Part Multiget")
-  val PartGA = timer("Part Getall")
-  val Match = timer("KS Match")
-}
-
 class IntervalRDD[V: ClassTag](
     /** The underlying representation of the IndexedRDD as an RDD of partitions. */
     private val partitionsRDD: RDD[IntervalPartition[V]])
-  extends RDD[(V)](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) with Logging {
+  extends RDD[V](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) with Logging {
 
   require(partitionsRDD.partitioner.isDefined)
-  partitionsRDD.persist()
 
   override val partitioner = partitionsRDD.partitioner
 
   override protected def getPartitions: Array[Partition] = partitionsRDD.partitions
 
-  /** TODO: Provides the `RDD[(K, V)]` equivalent output. */
+  /** Provides the `RDD[(K, V)]` equivalent output. */
   override def compute(part: Partition, context: TaskContext): Iterator[V] = {
-    null
-
+    firstParent[IntervalPartition[V].iterator(part, context).next.iterator
   }
 
   /** Persists the edge partitions using `targetStorageLevel`, which defaults to MEMORY_ONLY. */
-  override def cache(): this.type = {
-    partitionsRDD.persist()
+  override def persist(newLevel: StorageLevel): this.type = {
+    partitionsRDD.persist(newLevel)
+    this
+  }
+
+  override def unpersist(blocking: Boolean = true): this.type = {
+    partitionsRDD.unpersist(blocking)
     this
   }
 
@@ -81,6 +73,12 @@ class IntervalRDD[V: ClassTag](
   def filterByRegion(r: ReferenceRegion): IntervalRDD[V] = {
     mapIntervalPartitions(r, (part) => part.filter(r))
   }
+
+  // diff
+
+  // join
+
+  // outer join
 
   def mapIntervalPartitions(r: ReferenceRegion,
       f: (IntervalPartition[V]) => IntervalPartition[V]): IntervalRDD[V] = {
@@ -150,9 +148,9 @@ class PartitionMerger[V: ClassTag]() extends Serializable {
 }
 
 object IntervalRDD extends Logging {
+
   /**
-  * Constructs an updatable IntervalRDD from an RDD of a BDGFormat where partitioned by chromosome
-  * TODO: Support different partitioners
+  * Constructs an IntervalRDD from a set of ReferenceRegion, V tuples
   */
   def apply[V: ClassTag](elems: RDD[(ReferenceRegion, V)], dict: SequenceDictionary) : IntervalRDD[V] = IntervalTimers.InitTime.time {
     val partitioned =
@@ -167,6 +165,9 @@ object IntervalRDD extends Logging {
     new IntervalRDD(convertedPartitions)
   }
 
+  /**
+  * Constructs an IntervalRDD from a set of Interval Partitions
+  */
   def apply[V: ClassTag](elems: RDD[IntervalPartition[V]]) : IntervalRDD[V] = {
     new IntervalRDD(elems)
   }

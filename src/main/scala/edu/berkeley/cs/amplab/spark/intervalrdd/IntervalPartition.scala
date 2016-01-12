@@ -15,6 +15,8 @@
  * limitations under the License.f
  */
 
+// TODO: is chunking on region required?
+
 package edu.berkeley.cs.amplab.spark.intervalrdd
 
 import scala.reflect.{classTag, ClassTag}
@@ -30,13 +32,6 @@ import edu.berkeley.cs.amplab.spark.intervalrdd._
 import com.github.akmorrow13.intervaltree._
 import org.apache.spark.Logging
 import org.bdgenomics.adam.models.ReferenceRegion
-import org.bdgenomics.utils.instrumentation.Metrics
-
-object PartTimers extends Metrics {
-  val PartGetTime = timer("Partition Multiget timer")
-  val PartPutTime = timer("Partition Multiput timer")
-  val FilterTime = timer("Filter timer")
-}
 
 class IntervalPartition[V: ClassTag]
 	(protected val iTree: IntervalTree[V]) extends Serializable with Logging {
@@ -123,12 +118,8 @@ private[intervalrdd] object IntervalPartition {
 
   def apply[V: ClassTag]
       (r: ReferenceRegion, iter: Iterator[V]): IntervalPartition[V] = {
-
     val map = new IntervalTree[V]()
-    iter.foreach {
-      ku => {
-        map.insert(r, ku)
-      }
+    map.insert(r, iter)
     }
     new IntervalPartition(map)
   }
