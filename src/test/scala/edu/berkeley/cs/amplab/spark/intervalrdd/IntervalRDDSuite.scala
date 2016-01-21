@@ -24,7 +24,7 @@ import org.apache.parquet.filter2.dsl.Dsl._
 
 import org.bdgenomics.adam.projections.{ Projection, GenotypeField }
 import org.apache.parquet.filter2.predicate.FilterPredicate
-import com.github.akmorrow13.intervaltree._
+import com.github.erictu.intervaltree._
 import org.scalatest._
 import org.apache.spark.{ SparkConf, Logging, SparkContext }
 import org.apache.spark.TaskContext

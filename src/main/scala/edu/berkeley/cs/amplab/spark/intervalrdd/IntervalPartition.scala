@@ -1,4 +1,4 @@
-/*
+ /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -29,7 +29,7 @@ import org.apache.spark.storage.StorageLevel
 import scala.collection.mutable.ListBuffer
 
 import edu.berkeley.cs.amplab.spark.intervalrdd._
-import com.github.akmorrow13.intervaltree._
+import com.github.erictu.intervaltree._
 import org.apache.spark.Logging
 import org.bdgenomics.adam.models.ReferenceRegion
 
@@ -72,6 +72,17 @@ class IntervalPartition[V: ClassTag]
     val i: Iterator[V] = iTree.search(r)
     IntervalPartition(r, i)
   }
+
+  //general filterg
+  def filter(f: (IntervalPartition[V]) => IntervalPartition[V]): IntervalPartition[V] = {
+    val allRecs: List[V] = iTree.get
+    val filtered: List[V] = null //better way to do this?
+    //how to put in reference region?
+    //what should the reference region be? the original range or the range of the filtered data?
+    IntervalPartition(allRecs.toIterator)
+
+  }
+
 
   /**
    * Puts all (k,v) data from partition within the specificed referenceregion

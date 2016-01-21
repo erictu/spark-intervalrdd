@@ -34,7 +34,7 @@ import org.bdgenomics.utils.instrumentation.Metrics
 
 import scala.collection.mutable.ListBuffer
 
-import com.github.akmorrow13.intervaltree._
+import com.github.erictu.intervaltree._
 
 class IntervalRDD[V: ClassTag](
     /** The underlying representation of the IndexedRDD as an RDD of partitions. */
@@ -70,6 +70,39 @@ class IntervalRDD[V: ClassTag](
   }
 
   override def collect(): Array[V] = partitionsRDD.flatMap(r => r.get()).collect()
+
+
+
+  //General Filter
+  // override def filter(pred: Tuple2[K, V] => Boolean): IndexedRDD[K, V] =
+  //   this.mapIndexedRDDPartitions(_.filter(Function.untupled(pred)))
+
+  // /** Applies a function to each partition of this IndexedRDD. */
+  // private def mapIndexedRDDPartitions[K2: ClassTag, V2: ClassTag](
+  //     f: IndexedRDDPartition[K, V] => IndexedRDDPartition[K2, V2]): IndexedRDD[K2, V2] = {
+  //   val newPartitionsRDD = partitionsRDD.mapPartitions(_.map(f), preservesPartitioning = true)
+  //   new IndexedRDD(newPartitionsRDD)
+  // }
+
+
+
+  override def filter(pred: Tuple2[V] => Boolean): IntervalRDD[V] = {
+    mapIntervalPartitions(_.filter(Function.untupled(pred)))
+  }
+
+  def mapIntervalPartitions(f: (IntervalPartition[V]) => IntervalPartition[V]): IntervalRDD[V] = {
+    this.withPartitionsRDD[V](partitionsRDD.mapPartitions({ iter =>
+      if (iter.hasNext) {
+        val p = iter.next()
+        Iterator(p.filter(f))
+      } else {
+        Iterator.empty
+      }
+    }, preservesPartitioning = true))
+  }
+
+
+
 
   def filterByRegion(r: ReferenceRegion): IntervalRDD[V] = {
     mapIntervalPartitions(r, (part) => part.filter(r))
