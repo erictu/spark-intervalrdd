@@ -31,21 +31,21 @@ import scala.collection.mutable.ListBuffer
 import edu.berkeley.cs.amplab.spark.intervalrdd._
 import com.github.akmorrow13.intervaltree._
 import org.apache.spark.Logging
-import org.bdgenomics.adam.models.ReferenceRegion
+import org.bdgenomics.adam.models.{ Interval, ReferenceRegion }
 
-class IntervalPartition[V: ClassTag]
-	(protected val iTree: IntervalTree[V]) extends Serializable with Logging {
+class IntervalPartition[K <: Interval, V: ClassTag]
+	(protected val iTree: IntervalTree[K, V]) extends Serializable with Logging {
 
   def this() {
-    this(new IntervalTree[V]())
+    this(new IntervalTree[K, V]())
   }
 
-  def getTree(): IntervalTree[V] = {
+  def getTree(): IntervalTree[K, V] = {
     iTree
   }
 
   protected def withMap
-      (map: IntervalTree[V]): IntervalPartition[V] = {
+      (map: IntervalTree[K, V]): IntervalPartition[K, V] = {
     new IntervalPartition(map)
   }
 
@@ -54,10 +54,9 @@ class IntervalPartition[V: ClassTag]
    *
    * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
    */
-  def get(r: ReferenceRegion): Iterator[V] = {
+  def get(r: K): Iterator[V] = {
     iTree.search(r)
   }
-
   /**
    * Gets all (k,v) data from partition
    *
@@ -67,9 +66,8 @@ class IntervalPartition[V: ClassTag]
     iTree.get.toIterator
   }
 
-  // TODO: test
-  def filter(r: ReferenceRegion): IntervalPartition[V] = {
-    val i: Iterator[V] = iTree.search(r)
+	def filter(r: K): IntervalPartition[K, V] = {
+		val i: Iterator[V] = iTree.search(r)
     IntervalPartition(r, i)
   }
 
@@ -78,7 +76,7 @@ class IntervalPartition[V: ClassTag]
    *
    * @return IntervalPartition with new data
    */
-  def multiput(r: ReferenceRegion, vs: Iterator[V]): IntervalPartition[V] = {
+  def multiput(r: K, vs: Iterator[V]): IntervalPartition[K, V] = {
     val newTree = iTree.snapshot()
     newTree.insert(r, vs)
     this.withMap(newTree)
@@ -89,36 +87,42 @@ class IntervalPartition[V: ClassTag]
    *
    * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
    */
-  def mergePartitions(p: IntervalPartition[V]): IntervalPartition[V] = {
+  def mergePartitions(p: IntervalPartition[K, V]): IntervalPartition[K, V] = {
     val newTree = iTree.merge(p.getTree)
     this.withMap(newTree)
   }
 }
 
-
-
 private[intervalrdd] object IntervalPartition {
   val chunkSize = 1000
-  def matRegion(region: ReferenceRegion): ReferenceRegion = {
+  def matInterval[K <: Interval](region: K): K = {
     val start = region.start / chunkSize * chunkSize
     val end = region.end / chunkSize * chunkSize + (chunkSize - 1)
-    new ReferenceRegion(region.referenceName, start, end)
+
+		// TODO: can you do this more generally?
+		region match {
+		case _: ReferenceRegion => new ReferenceRegion(region.asInstanceOf[ReferenceRegion].referenceName, start, end).asInstanceOf[K]
+		case _ => {
+				println("Type not supported for interval materialization")
+				region
+			}
+		}
   }
 
-  def apply[V: ClassTag]
-      (iter: Iterator[(ReferenceRegion, V)]): IntervalPartition[V] = {
-    val map = new IntervalTree[V]()
+  def apply[K <: Interval, V: ClassTag]
+      (iter: Iterator[(K, V)]): IntervalPartition[K, V] = {
+    val map = new IntervalTree[K, V]()
     iter.foreach {
       ku => {
-        map.insert(matRegion(ku._1), ku._2)
+        map.insert(matInterval(ku._1), ku._2)
       }
     }
     new IntervalPartition(map)
   }
 
-  def apply[V: ClassTag]
-      (r: ReferenceRegion, iter: Iterator[V]): IntervalPartition[V] = {
-    val map = new IntervalTree[V]()
+  def apply[K <: Interval, V: ClassTag]
+      (r: K, iter: Iterator[V]): IntervalPartition[K, V] = {
+    val map = new IntervalTree[K, V]()
     map.insert(r, iter)
     new IntervalPartition(map)
   }
