@@ -72,6 +72,13 @@ class IntervalPartition[K <: Interval, V: ClassTag]
   }
 
   /**
+   * Return a new IntervalPartition filtered by some predicate
+   */
+  def filterGen(pred: V => Boolean): IntervalPartition[K, V] = {
+    new IntervalPartition(iTree.treeFilt(pred))
+  }
+
+  /**
    * Puts all (k,v) data from partition within the specificed referenceregion
    *
    * @return IntervalPartition with new data
@@ -126,4 +133,5 @@ private[intervalrdd] object IntervalPartition {
     map.insert(r, iter)
     new IntervalPartition(map)
   }
+
 }

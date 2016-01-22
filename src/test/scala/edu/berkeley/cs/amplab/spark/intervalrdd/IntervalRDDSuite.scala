@@ -274,4 +274,26 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
   }
 
+  sparkTest("applying a predicate to the RDD") {
+    val region1: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
+    val region2: ReferenceRegion = new ReferenceRegion("chr1", 100L, 199L)
+    val region3: ReferenceRegion = new ReferenceRegion("chr1", 200L, 299L)
+    val overlapReg: ReferenceRegion = new ReferenceRegion("chr1", 0L, 300L)
+
+    var arr = Array((region1, rec1), (region2, rec2), (region3, rec3))
+    var arrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(arr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
+
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    val filtRDD = testRDD.filterGen(elem => elem == "data1")
+    val results = filtRDD.get(overlapReg)
+    println(results.size)
+    assert(results.size == 1)
+
+
+  }
+
 }

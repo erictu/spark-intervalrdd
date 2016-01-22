@@ -133,7 +133,23 @@ class IntervalPartitionSuite extends FunSuite  {
 		val overlapReg: ReferenceRegion = new ReferenceRegion(chr, 0L, 200L)
 
 		val results = newPartition.get(overlapReg).toList
-	  assert(results.size == 5)
+	  	assert(results.size == 5)
+
+	}
+
+	test("applying a predicate") {
+
+		var partition: IntervalPartition[ReferenceRegion, Long] = new IntervalPartition[ReferenceRegion, Long]()
+
+		var newPartition = partition.multiput(region1, Iterator(read1, read3))
+		newPartition = newPartition.multiput(region2, Iterator(read2, read4))
+
+		val filtPart = newPartition.filterGen(elem => elem < 300L)
+		val overlapReg: ReferenceRegion = new ReferenceRegion(chr, 0L, 300L)
+
+		val results = filtPart.get(overlapReg).toList
+		assert(results.size == 2)
+
 
 	}
 
