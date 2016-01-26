@@ -66,27 +66,46 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
 
   override def collect(): Array[V] = partitionsRDD.flatMap(r => r.get()).collect()
 
-  def filterByRegion(r: K): IntervalRDD[K, V] = {
-    mapIntervalPartitions(r, (part) => part.filter(r))
+
+  def filterByInterval(r: K): IntervalRDD[K, V] = {
+    mapIntervalPartitions(r, (part) => part.filterByInterval(r))
   }
+
 
 
   /**
    * Performs filtering given a predicate
    */
-  def filterGen(pred: V => Boolean): IntervalRDD[K, V] = {
-    mapPartitionsGen(pred, (part) => part.filterGen(pred))
+  override def filter(pred: V => Boolean): IntervalRDD[K, V] = {
+    this.mapPartitionsGen(pred)
   }
   
+   /** 
+    * Maps each value, preserving the index. 
+    */
+  def mapValues[V2: ClassTag](f: V => V2): IntervalRDD[K, V2] = {
+    this.mapFunction(f) //TODO: how to make this generalizable
+  }
+
+  def mapFunction[V2: ClassTag](f: V => V2): IntervalRDD[K, V2] = {
+    this.withPartitionsRDD[K, V2](partitionsRDD.mapPartitions({ iter =>
+      if (iter.hasNext) {
+        val p = iter.next()
+        Iterator(p.mapValues(f))
+      } else {
+        Iterator.empty
+      }
+    }, preservesPartitioning = true))
+  }
+
   /**
    * Applies a predicate to all partitions
    */
-  def mapPartitionsGen(pred: V => Boolean,
-      f: (IntervalPartition[K, V]) => IntervalPartition[K, V]): IntervalRDD[K, V] = {
+  def mapPartitionsGen(pred: V => Boolean): IntervalRDD[K, V] = {
     this.withPartitionsRDD[K, V](partitionsRDD.mapPartitions({ iter =>
       if (iter.hasNext) {
         val p = iter.next()
-        Iterator(p.filterGen(pred))
+        Iterator(p.filter(pred))
       } else {
         Iterator.empty
       }
@@ -99,7 +118,7 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
     this.withPartitionsRDD[K, V](partitionsRDD.mapPartitions({ iter =>
       if (iter.hasNext) {
         val p = iter.next()
-        Iterator(p.filter(r))
+        Iterator(p.filterByInterval(r))
       } else {
         Iterator.empty
       }

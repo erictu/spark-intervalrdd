@@ -100,6 +100,24 @@ class IntervalPartitionSuite extends FunSuite  {
 		assert(results.contains(read4))
 	}
 
+	test("selectively getting intervals") {
+
+		var partition: IntervalPartition[ReferenceRegion, Long] = new IntervalPartition[ReferenceRegion, Long]()
+
+		var newPartition = partition.multiput(region1, Iterator(read1, read3))
+		newPartition = newPartition.multiput(region2, Iterator(read2, read4))
+
+		// assert values are in the new partition
+		var results: List[Long] = newPartition.get(region1).toList
+		// results = results ++ newPartition.get(region2).toList
+
+		assert(results.contains(read1))
+		assert(!results.contains(read2))
+		assert(results.contains(read3))
+		assert(!results.contains(read4))
+
+	}
+
 	test("putting differing number of reads into different regions") {
 
 		var partition: IntervalPartition[ReferenceRegion, Long] = new IntervalPartition[ReferenceRegion, Long]()
@@ -144,12 +162,28 @@ class IntervalPartitionSuite extends FunSuite  {
 		var newPartition = partition.multiput(region1, Iterator(read1, read3))
 		newPartition = newPartition.multiput(region2, Iterator(read2, read4))
 
-		val filtPart = newPartition.filterGen(elem => elem < 300L)
+		val filtPart = newPartition.filter(elem => elem < 300L)
 		val overlapReg: ReferenceRegion = new ReferenceRegion(chr, 0L, 300L)
 
 		val results = filtPart.get(overlapReg).toList
 		assert(results.size == 2)
 
+	}
+
+	test("applying a map") {
+
+		var partition: IntervalPartition[ReferenceRegion, Long] = new IntervalPartition[ReferenceRegion, Long]()
+
+		var newPartition = partition.multiput(region1, Iterator(read1, read3))
+		newPartition = newPartition.multiput(region2, Iterator(read2, read4))
+
+		val filtPart = newPartition.mapValues(elem => elem + 300L)
+		val overlapReg: ReferenceRegion = new ReferenceRegion(chr, 0L, 350L)
+
+		val results = filtPart.getTree
+		println(results)
+		// println(results.size)
+		// assert(results.size == 2)
 
 	}
 

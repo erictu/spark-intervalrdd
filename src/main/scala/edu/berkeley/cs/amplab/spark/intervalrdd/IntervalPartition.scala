@@ -66,7 +66,7 @@ class IntervalPartition[K <: Interval, V: ClassTag]
     iTree.get.toIterator
   }
 
-	def filter(r: K): IntervalPartition[K, V] = {
+	def filterByInterval(r: K): IntervalPartition[K, V] = {
 		val i: Iterator[V] = iTree.search(r)
     IntervalPartition(r, i)
   }
@@ -74,9 +74,21 @@ class IntervalPartition[K <: Interval, V: ClassTag]
   /**
    * Return a new IntervalPartition filtered by some predicate
    */
-  def filterGen(pred: V => Boolean): IntervalPartition[K, V] = {
+  def filter(pred: V => Boolean): IntervalPartition[K, V] = {
     new IntervalPartition(iTree.treeFilt(pred))
   }
+
+
+  /**
+   * Applies a map function over the interval tree
+   */
+  def mapValues[V2: ClassTag](f: V => V2): IntervalPartition[K, V2] = {
+    val retTree: IntervalTree[K, V2] = iTree.mapValues(f)
+    new IntervalPartition(retTree) //What's the point of withMap
+  }
+
+
+
 
   /**
    * Puts all (k,v) data from partition within the specificed referenceregion
@@ -98,10 +110,12 @@ class IntervalPartition[K <: Interval, V: ClassTag]
     val newTree = iTree.merge(p.getTree)
     this.withMap(newTree)
   }
+
 }
 
 private[intervalrdd] object IntervalPartition {
-  val chunkSize = 1000
+  var chunkSize = 1000L
+
   def matInterval[K <: Interval](region: K): K = {
     val start = region.start / chunkSize * chunkSize
     val end = region.end / chunkSize * chunkSize + (chunkSize - 1)
