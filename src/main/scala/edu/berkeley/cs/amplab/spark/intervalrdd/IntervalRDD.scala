@@ -79,9 +79,9 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
   override def filter(pred: V => Boolean): IntervalRDD[K, V] = {
     this.mapPartitionsGen(pred)
   }
-  
-   /** 
-    * Maps each value, preserving the index. 
+
+   /**
+    * Maps each value, preserving the index.
     */
   def mapValues[V2: ClassTag](f: V => V2): IntervalRDD[K, V2] = {
     this.mapFunction(f) //TODO: how to make this generalizable
@@ -152,7 +152,7 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
   /**
    * Unconditionally updates the specified keys to have the specified value. Returns a new IntervalRDD
    **/
-  def multiput(elems: Array[(K, V)], dict: SequenceDictionary): IntervalRDD[K, V] = {
+  def multiput(elems: Array[(K, V)]): IntervalRDD[K, V] = {
     val partitioned: RDD[(K, V)] = context.parallelize(elems.toSeq).partitionBy(partitioner.get)
 
     val convertedPartitions: RDD[IntervalPartition[K, V]] = partitioned.mapPartitions[IntervalPartition[K, V]](
@@ -165,6 +165,27 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
     new IntervalRDD(newPartitionsRDD)
   }
 }
+
+/**
+ * Unconditionally updates the specified keys to have the specified value. Returns a new IntervalRDD
+ **/
+def multiput(elems: RDD[(K, V)]): IntervalRDD[K, V] = {
+  val partitioned =
+    if (elems.partitioner.isDefined) elems
+    else {
+      elems.partitionBy(new HashPartitioner(elems.partitions.size))
+    }
+
+  val convertedPartitions: RDD[IntervalPartition[K, V]] = partitioned.mapPartitions[IntervalPartition[K, V]](
+    iter => Iterator(IntervalPartition(iter)),
+    preservesPartitioning = true)
+
+  // merge the new partitions with existing partitions
+  val merger = new PartitionMerger[K, V]()
+  val newPartitionsRDD = partitionsRDD.zipPartitions(convertedPartitions, true)((aiter, biter) => merger(aiter, biter))
+  new IntervalRDD(newPartitionsRDD)
+}
+
 
 class PartitionMerger[K <: Interval, V: ClassTag]() extends Serializable {
   def apply(thisIter: Iterator[IntervalPartition[K, V]], otherIter: Iterator[IntervalPartition[K, V]]): Iterator[IntervalPartition[K, V]] = {
@@ -179,7 +200,7 @@ object IntervalRDD extends Logging {
   /**
   * Constructs an IntervalRDD from a set of ReferenceRegion, V tuples
   */
-  def apply[K<: Interval: ClassTag, V: ClassTag](elems: RDD[(K, V)], dict: SequenceDictionary) : IntervalRDD[K, V] = {
+  def apply[K<: Interval: ClassTag, V: ClassTag](elems: RDD[(K, V)]) : IntervalRDD[K, V] = {
     val partitioned =
       if (elems.partitioner.isDefined) elems
       else {
