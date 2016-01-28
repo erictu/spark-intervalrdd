@@ -54,20 +54,29 @@ class IntervalPartition[K <: Interval, V: ClassTag]
    *
    * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
    */
-  def get(r: K): Iterator[V] = {
-    iTree.search(r)
+  def get(r: K): Iterator[(K, V)] = {
+    iTree.search(r).filter(kv => intervalOverlap(r, kv._1))
   }
+
+  /*
+   * Helper function for overlap of intervals
+   */
+  def intervalOverlap(r1: K, r2: K): Boolean = {
+    r1.start <= r2.end && r1.end >= r2.start
+  }
+
+
   /**
    * Gets all (k,v) data from partition
    *
    * @return Iterator of searched ReferenceRegion and the corresponding (K,V) pairs
    */
-  def get(): Iterator[V] = {
+  def get(): Iterator[(K, V)] = {
     iTree.get.toIterator
   }
 
 	def filterByInterval(r: K): IntervalPartition[K, V] = {
-		val i: Iterator[V] = iTree.search(r)
+		val i: Iterator[(K, V)] = iTree.search(r).filter(kv => intervalOverlap(r, kv._1))
     IntervalPartition(r, i)
   }
 
@@ -95,7 +104,7 @@ class IntervalPartition[K <: Interval, V: ClassTag]
    *
    * @return IntervalPartition with new data
    */
-  def multiput(r: K, vs: Iterator[V]): IntervalPartition[K, V] = {
+  def multiput(r: K, vs: Iterator[(K, V)]): IntervalPartition[K, V] = {
     val newTree = iTree.snapshot()
     newTree.insert(r, vs)
     this.withMap(newTree)
@@ -135,14 +144,14 @@ private[intervalrdd] object IntervalPartition {
     val map = new IntervalTree[K, V]()
     iter.foreach {
       ku => {
-        map.insert(matInterval(ku._1), ku._2)
+        map.insert(matInterval(ku._1), (ku._1, ku._2))
       }
     }
     new IntervalPartition(map)
   }
 
   def apply[K <: Interval, V: ClassTag]
-      (r: K, iter: Iterator[V]): IntervalPartition[K, V] = {
+      (r: K, iter: Iterator[(K, V)]): IntervalPartition[K, V] = {
     val map = new IntervalTree[K, V]()
     map.insert(r, iter)
     new IntervalPartition(map)

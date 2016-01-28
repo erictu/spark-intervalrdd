@@ -29,6 +29,7 @@ import org.bdgenomics.adam.models.{ ReferenceRegion, Interval, SequenceDictionar
 import org.bdgenomics.adam.rdd.GenomicPositionPartitioner
 import org.bdgenomics.utils.instrumentation.Metrics
 import scala.collection.mutable.ListBuffer
+import scala.collection.Map
 import com.github.akmorrow13.intervaltree._
 
 class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
@@ -64,13 +65,12 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
     partitionsRDD.map(_.getTree.size).reduce(_ + _)
   }
 
-  override def collect(): Array[V] = partitionsRDD.flatMap(r => r.get()).collect()
+  override def collect(): Array[V] = partitionsRDD.flatMap(r => r.get()).collect.map(_._2)
 
 
   def filterByInterval(r: K): IntervalRDD[K, V] = {
     mapIntervalPartitions(r, (part) => part.filterByInterval(r))
   }
-
 
 
   /**
@@ -134,15 +134,15 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
   * Assume that we're only getting data that exists (if it doesn't exist,
   * would have been handled by upper LazyMaterialization layer
   */
-  def get(region: K): List[V] = {
+  def get(region: K): List[(K, V)] = {
 
-    val results: Array[Array[V]] = {
+    val results: Array[Array[(K, V)]] = {
       context.runJob(partitionsRDD, (context: TaskContext, partIter: Iterator[IntervalPartition[K, V]]) => {
        if (partIter.hasNext) {
           val intPart = partIter.next()
           intPart.get(region).toArray
        } else {
-          Array[V]()
+          Array[(K, V)]()
        }
       })
     }
