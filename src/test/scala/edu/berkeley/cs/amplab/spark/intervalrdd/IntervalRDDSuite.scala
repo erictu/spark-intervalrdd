@@ -43,260 +43,318 @@ import org.bdgenomics.adam.util.ADAMFunSuite
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.formats.avro.{ AlignmentRecord, Feature, Genotype, GenotypeAllele, NucleotideContigFragment }
 
-object TestTimers extends Metrics {
-  val Test1 = timer("Test1")
-  val Test2 = timer("Test2")
-  val Test3 = timer("Test3")
-}
-
 
 class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
-  sparkTest("Get data") {
-    val bamFile = "./mouse_chrM_p1.bam"
+  // create regions
+  val chr1 = "chr1"
+  val chr2 = "chr2"
+  val chr3 = "chr3"
+  val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
+  val region2: ReferenceRegion = new ReferenceRegion(chr2, 100L, 199L)
+  val region3: ReferenceRegion = new ReferenceRegion(chr3, 200L, 299L)
 
-      val region = new ReferenceRegion("chrM", 0L, 10000L)
-      val sd = new SequenceDictionary(Vector(SequenceRecord("chrM", 1000L)))
-      val rdd: RDD[AlignmentRecord] = sc.loadIndexedBam(bamFile, region)
-      val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = rdd.map(v => (region, v))
+  //creating data
+  val rec1 = "data1"
+  val rec2 = "data2"
+  val rec3 = "data3"
+  val rec4 = "data4"
+  val rec5 = "data5"
+  val rec6 = "data6"
 
-      var intRDD: IntervalRDD[AlignmentRecord] = IntervalRDD(alignmentRDD, sd)
-      val results = intRDD.get(region)
-      assert(results.size != 0)
-      println(results.size)
+  sparkTest("Get alignment data over 1000 bases") {
+
+    val filePath = "./mouse_chrM_p1.bam"
+    val region = new ReferenceRegion("chrM", 0L, 1000L)
+    val interval = new ReferenceRegion("chrM", 0L, 1000L)
+
+    val sd = sc.adamDictionaryLoad[AlignmentRecord](filePath)
+    val rdd: RDD[AlignmentRecord] = sc.loadIndexedBam(filePath, region)
+
+    val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = rdd.map(v => (region, v))
+
+    var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD, sd)
+    val results = intRDD.get(region)
+
+    assert(results.size == rdd.count)
 
   }
 
-//
-//   sparkTest("create IntervalRDD from RDD using apply") {
-//     val metricsListener = new MetricsListener(new RecordedMetrics())
-//     sc.addSparkListener(metricsListener)
-//     Metrics.initialize(sc)
-//
-//     val chr1 = "chr1"
-//     val chr2 = "chr2"
-//     val chr3 = "chr3"
-//     val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
-//     val region2: ReferenceRegion = new ReferenceRegion(chr2, 100L, 199L)
-//     val region3: ReferenceRegion = new ReferenceRegion(chr3, 200L, 299L)
-//
-//     //creating data
-//     val rec1 = "data1"
-//     val rec2 = "data2"
-//     val rec3 = "data3"
-//
-//     var intArr = Array((region1, rec1), (region2, rec2), (region3, rec3))
-//     var intArrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(intArr)
-//
-//     val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
-//       SequenceRecord("chr2", 1000L),
-//       SequenceRecord("chr3", 1000L))) //NOTE: the number is the length of the chromosome
-//
-//     var testRDD: IntervalRDD[String] = IntervalRDD(intArrRDD, sd)
-//
-//   }
-//
-//   sparkTest("get one interval, k value") {
-//     val metricsListener = new MetricsListener(new RecordedMetrics())
-//     sc.addSparkListener(metricsListener)
-//     Metrics.initialize(sc)
-//
-//     val chr1 = "chr1"
-//     val chr2 = "chr2"
-//     val chr3 = "chr3"
-//     val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
-//     val region2: ReferenceRegion = new ReferenceRegion(chr2, 100L, 199L)
-//     val region3: ReferenceRegion = new ReferenceRegion(chr3, 200L, 299L)
-//
-//     //creating data
-//     val rec1 = "data1"
-//     val rec2 = "data2"
-//     val rec3 = "data3"
-//
-//     var intArr = Array((region1, rec1), (region2, rec2), (region3, rec3))
-//     var intArrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(intArr)
-//
-//     //See TODO flags above
-//     //initializing IntervalRDD with certain values
-//     val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
-//       SequenceRecord("chr2", 1000L),
-//       SequenceRecord("chr3", 1000L)))
-//
-//     var testRDD: IntervalRDD[String] = IntervalRDD(intArrRDD, sd)
-//     assert(testRDD.get(region1).size == 1)
-//
-//
-//   }
-//
-//   sparkTest("put multiple intervals into RDD to existing chromosome") {
-//     val metricsListener = new MetricsListener(new RecordedMetrics())
-//     sc.addSparkListener(metricsListener)
-//     Metrics.initialize(sc)
-//
-//     val chr1 = "chr1"
-//     val chr2 = "chr2"
-//     val chr3 = "chr3"
-//     val region1: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
-//     val region2: ReferenceRegion = new ReferenceRegion(chr2, 100L, 199L)
-//     val region3: ReferenceRegion = new ReferenceRegion(chr3, 200L, 299L)
-//
-//     //creating data
-//     val rec1 = "data1"
-//     val rec2 = "data2"
-//     val rec3 = "data3"
-//
-//     var intArr = Array((region1, rec1), (region2, rec2), (region3, rec3))
-//     var intArrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(intArr)
-//
-//     //See TODO flags above
-//     //initializing IntervalRDD with certain values
-//     val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
-//       SequenceRecord("chr2", 1000L),
-//       SequenceRecord("chr3", 1000L)))
-//
-//     var testRDD: IntervalRDD[String] = IntervalRDD(intArrRDD, sd)
-//
-//     val rec4 = "data4"
-//     val rec5 = "data5"
-//
-//     intArr = Array((region2, rec4), (region3, rec5))
-//     val zipped = sc.parallelize(intArr)
-//
-//
-//     val newRDD: IntervalRDD[String] = testRDD.multiput(zipped, sd)
-//
-//     var results = newRDD.get(region3)
-//     assert(results.size == 2)
-//   }
-//
-//   sparkTest("call put multiple times on reads with same ReferenceRegion") {
-//     val metricsListener = new MetricsListener(new RecordedMetrics())
-//     sc.addSparkListener(metricsListener)
-//     Metrics.initialize(sc)
-//
-//     val region: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
-//
-//     //creating data
-//     val rec1 = "data1"
-//     val rec2 = "data2"
-//     val rec3 = "data3"
-//     val rec4 = "data4"
-//     val rec5 = "data5"
-//     val rec6 = "data6"
-//
-//     var intArr = Array((region, rec1), (region, rec2), (region, rec3))
-//     var intArrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(intArr)
-//
-//     val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L)))
-//
-//     var testRDD: IntervalRDD[String] = IntervalRDD(intArrRDD, sd)
-//
-//     //constructing RDDs to put in
-//     val onePutInput = Array((region, rec4), (region, rec5))
-//     val zipped: RDD[(ReferenceRegion, String)] = sc.parallelize(onePutInput)
-//
-//     val twoPutInput = Array((region, rec6))
-//     val zipped2: RDD[(ReferenceRegion, String)] = sc.parallelize(twoPutInput)
-//
-//     // Call Put twice
-//     val onePutRDD: IntervalRDD[String] = testRDD.multiput(zipped, sd)
-//     val twoPutRDD: IntervalRDD[String] = onePutRDD.multiput(zipped2, sd)
-//
-//
-//     var resultsOrig = testRDD.get(region)
-//     var resultsOne = onePutRDD.get(region)
-//     var resultsTwo = twoPutRDD.get(region)
-//
-//     assert(resultsOrig.size == 3) //size of results for the one region we queried
-//     assert(resultsOne.size == 5) //size after adding two records
-//     assert(resultsTwo.size == 6) //size after adding another record
-//
-//   }
-//
-//   sparkTest("merge RDDs across multiple chromosomes") {
-//     val metricsListener = new MetricsListener(new RecordedMetrics())
-//     sc.addSparkListener(metricsListener)
-//     Metrics.initialize(sc)
-//
-//     val region1: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
-//     val region2: ReferenceRegion = new ReferenceRegion("chr2", 0L,  199L)
-//
-//     //creating data
-//     val rec1 = "data1"
-//     val rec2 = "data2"
-//     val rec3 = "data3"
-//     val rec4 = "data4"
-//     val rec5 = "data5"
-//     val rec6 = "data6"
-//
-//     var intArr = Array((region1, rec1), (region1, rec2), (region1, rec3))
-//     var intArrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(intArr)
-//
-//     val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
-//       SequenceRecord("chr2", 1000L)))
-//
-//     var testRDD: IntervalRDD[String] = IntervalRDD(intArrRDD, sd)
-//
-//     val newRDD = Array((region2, rec4), (region2, rec5))
-//     val zipped: RDD[(ReferenceRegion, String)] = sc.parallelize(newRDD)
-//
-//
-//     val chr2RDD: IntervalRDD[String] = testRDD.multiput(zipped, sd)
-//
-//     var origChr1 = testRDD.get(region1)
-//     var newChr1 = chr2RDD.get(region1)
-//
-//     assert(origChr1 == newChr1)
-//
-//     var newChr2 = chr2RDD.get(region2)
-//
-//     assert(newChr2.size == newRDD.size)
-//   }
-//
-//   sparkTest("test for vcf data retreival") {
-//
-//     val filePath = "./6-sample.vcf"
-//
-//     val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L)))
-//
-//     // load variant data
-//     val chr1 = "chr1"
-//     val viewRegion: ReferenceRegion = new ReferenceRegion(chr1, 0L, 99L)
-//
-//     val vRDD: RDD[Genotype] = sc.loadGenotypes(filePath).filterByOverlappingRegion(viewRegion)
-//     val variantRDD: RDD[(ReferenceRegion, Genotype)] = vRDD.keyBy(v => ReferenceRegion(ReferencePosition(v)))
-//
-//     var testRDD: IntervalRDD[Genotype] = IntervalRDD(variantRDD, sd)
-//     val results = testRDD.get(viewRegion)
-//     println(results)
-//
-//   }
-//
-//
-//   sparkTest("test new rdd") {
-//
-//     val region: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
-//
-//     //creating data
-//     val rec1 = "data1"
-//     val rec2 = "data2"
-//     val rec3 = "data3"
-//     val rec4 = "data4"
-//     val rec5 = "data5"
-//     val rec6 = "data6"
-//
-//     var intArr = Array((region, rec1), (region, rec2), (region, rec3))
-//     var intArrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(intArr)
-//
-//     val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L)))
-//
-//     var testRDD: IntervalRDD[String] = IntervalRDD(intArrRDD, sd)
-//
-//     val r: ReferenceRegion = new ReferenceRegion("chr1", 0L, 100L)
-//     val newRDD = testRDD.filterByRegion(r)
-//     println(newRDD.count)
-//     println(testRDD.count)
-//
-//   }
+  sparkTest("create IntervalRDD from RDD of datatype string") {
+
+    // parallelize data
+    var intArr = Array((region1, rec1), (region2, rec2), (region3, rec3))
+    var intArrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(intArr).partitionBy(new HashPartitioner(10))
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
+
+    var intRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD, sd)
+    val results = intRDD.get(region3)
+    println(results)
+
+    assert(results.head == (region3, rec3))
+    assert(results.size == 1)
+
+  }
+
+
+  sparkTest("merge new values into existing IntervalRDD") {
+
+    var intArr = Array((region1, rec1), (region2, rec2), (region3, rec3))
+    var intArrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(intArr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
+
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD, sd)
+
+    intArr = Array((region2, rec4), (region3, rec5))
+
+    val newRDD: IntervalRDD[ReferenceRegion,  String] = testRDD.multiput(intArr, sd)
+    var results = newRDD.get(region3)
+
+    assert(results.size == 2)
+  }
+
+
+  sparkTest("call put multiple times on reads with same ReferenceRegion") {
+
+    val region: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
+
+    var intArr = Array((region, rec1), (region, rec2), (region, rec3))
+    var intArrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(intArr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L)))
+
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD, sd)
+
+    //constructing RDDs to put in
+    val onePutInput = Array((region, rec4), (region, rec5))
+    val twoPutInput = Array((region, rec6))
+
+    // Call Put twice
+    val onePutRDD: IntervalRDD[ReferenceRegion,  String] = testRDD.multiput(onePutInput, sd)
+    val twoPutRDD: IntervalRDD[ReferenceRegion,  String] = onePutRDD.multiput(twoPutInput, sd)
+
+    var resultsOrig = testRDD.get(region)
+    var resultsOne = onePutRDD.get(region)
+    var resultsTwo = twoPutRDD.get(region)
+
+    assert(resultsOrig.size == 3) //size of results for the one region we queried
+    assert(resultsOne.size == 5) //size after adding two records
+    assert(resultsTwo.size == 6) //size after adding another record
+
+  }
+
+  sparkTest("merge RDDs across multiple chromosomes") {
+
+    var intArr = Array((region1, rec1), (region1, rec2), (region1, rec3))
+    var intArrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(intArr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L)))
+
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD, sd)
+
+    val arr = Array((region2, rec4), (region2, rec5))
+
+    val chr2RDD: IntervalRDD[ReferenceRegion,  String] = testRDD.multiput(arr, sd)
+
+    var origChr1 = testRDD.get(region1)
+    var newChr1 = chr2RDD.get(region1)
+
+    assert(origChr1 == newChr1)
+
+    var newChr2 = chr2RDD.get(region2)
+
+    assert(newChr2.size == arr.size)
+  }
+
+  sparkTest("test for vcf data") {
+
+    val filePath = "./6-sample.vcf"
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("6", 1999999L)))
+
+    // load variant data
+    val chr = "6"
+    val viewRegion: ReferenceRegion = new ReferenceRegion(chr, 900000L, 999999L)
+    val region: ReferenceRegion = new ReferenceRegion(chr, 900000L, 999999L)
+
+    val vRDD: RDD[Genotype] = sc.loadGenotypes(filePath).filterByOverlappingRegion(viewRegion)
+    val variantRDD: RDD[(ReferenceRegion, Genotype)] = vRDD.keyBy(v => new ReferenceRegion(v.variant.contig.contigName, v.variant.start,v.variant.end))
+
+    var testRDD: IntervalRDD[ReferenceRegion,  Genotype] = IntervalRDD(variantRDD, sd)
+    val results = testRDD.get(viewRegion)
+    assert(results.size == vRDD.count)
+
+  }
+
+  sparkTest("test count function") {
+
+    val filePath = "./mouse_chrM_p1.bam"
+    val region = new ReferenceRegion("chrM", 0L, 1000L)
+
+    val sd = sc.adamDictionaryLoad[AlignmentRecord](filePath)
+    val rdd: RDD[AlignmentRecord] = sc.loadIndexedBam(filePath, region)
+
+    val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = rdd.map(v => (region, v))
+
+    var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD, sd)
+
+
+    assert(intRDD.count == rdd.count)
+
+  }
+
+  sparkTest("test filterByInterval") {
+
+    val outRegion: ReferenceRegion = new ReferenceRegion(chr1, 200L, 299L)
+    var intArr = Array((region1, rec1), (region1, rec2), (outRegion, rec3)) //region1 is 0-99
+    var intArrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(intArr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L)))
+
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD, sd)
+
+    val r: ReferenceRegion = new ReferenceRegion("chr1", 0L, 50L)
+    val newRDD = testRDD.filterByInterval(r)
+    assert(newRDD.count == 2)
+    assert(testRDD.count == 3)
+  }
+
+
+  sparkTest("test explicit setting of number of partitions") {
+    val filePath = "./mouse_chrM_p1.bam"
+    val region = new ReferenceRegion("chrM", 0L, 20000L)
+
+    val sd = sc.adamDictionaryLoad[AlignmentRecord](filePath)
+    val rdd: RDD[AlignmentRecord] = sc.loadIndexedBam(filePath, region)
+
+    val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = rdd.map(v => (ReferenceRegion(v), v))
+
+    var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD, sd)
+
+    assert(intRDD.count == rdd.count)
+
+  }
+
+  sparkTest("count data where chromosome partitions overlap") {
+    var arr = Array((region1, rec1), (region2, rec2), (region3, rec3))
+    var arrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(arr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
+
+    var intRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    assert(arrRDD.count == intRDD.count)
+  }
+
+  sparkTest("get data where chromosome partitions overlap") {
+    var arr = Array((region1, rec1), (region2, rec2), (region3, rec3))
+    var arrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(arr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
+
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+
+    val results1 = testRDD.get(region1)
+    assert(results1.size == 1)
+
+    val results2 = testRDD.get(region2)
+    assert(results2.size == 1)
+
+    val results3 = testRDD.get(region3)
+    assert(results3.size == 1)
+
+  }
+
+  sparkTest("applying a predicate to the RDD") {
+    val region1: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
+    val region2: ReferenceRegion = new ReferenceRegion("chr1", 100L, 199L)
+    val region3: ReferenceRegion = new ReferenceRegion("chr1", 200L, 299L)
+    val overlapReg: ReferenceRegion = new ReferenceRegion("chr1", 0L, 300L)
+
+    var arr = Array((region1, rec1), (region2, rec2), (region3, rec3))
+    var arrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(arr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
+
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    val filtRDD = testRDD.filter(elem => elem == "data1")
+    val results = filtRDD.get(overlapReg)
+    // println(results.size)
+    assert(results.size == 1)
+
+
+  }
+
+  sparkTest("testing collect") {
+    val region1: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
+    val region2: ReferenceRegion = new ReferenceRegion("chr1", 100L, 199L)
+    val region3: ReferenceRegion = new ReferenceRegion("chr1", 200L, 299L)
+
+    var arr = Array((region1, rec1), (region2, rec2), (region3, rec3))
+    var arrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(arr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
+
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    val collected: Array[String] = testRDD.collect()
+    // println(collected.size)
+    // collected.foreach(println)
+    assert(collected.size == 3)
+
+  }
+
+  sparkTest("testing count") {
+    val region1: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
+    val region2: ReferenceRegion = new ReferenceRegion("chr1", 100L, 199L)
+    val region3: ReferenceRegion = new ReferenceRegion("chr1", 200L, 299L)
+
+    var arr = Array((region1, rec1), (region2, rec2), (region3, rec3))
+    var arrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(arr)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
+
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    // println(testRDD.count())
+    assert(testRDD.count == 3)
+
+
+  }
+
+  sparkTest("testing map") {
+    val region1: ReferenceRegion = new ReferenceRegion("chr1", 0L, 99L)
+    val region2: ReferenceRegion = new ReferenceRegion("chr1", 100L, 199L)
+    val region3: ReferenceRegion = new ReferenceRegion("chr1", 200L, 299L)
+    var arr = Array((region1, rec1), (region2, rec2), (region3, rec3))
+    var arrRDD: RDD[(ReferenceRegion, String)] = sc.parallelize(arr)
+    val overlapReg: ReferenceRegion = new ReferenceRegion("chr1", 10L, 20L)
+
+    val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
+      SequenceRecord("chr2", 1000L),
+      SequenceRecord("chr3", 1000L)))
+
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    var mapRDD = testRDD.mapValues(elem => elem + "YAY")
+    val results = mapRDD.get(overlapReg)
+    results.foreach(println)
+    assert(results(0) == (region1, "data1YAY"))
+
+
+  }
 
 }
