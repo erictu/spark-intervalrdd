@@ -15,8 +15,6 @@
  * limitations under the License.f
  */
 
-// TODO: is chunking on region required?
-
 package edu.berkeley.cs.amplab.spark.intervalrdd
 
 import scala.reflect.{classTag, ClassTag}
@@ -34,18 +32,18 @@ import org.apache.spark.Logging
 import org.bdgenomics.adam.models.{ Interval, ReferenceRegion }
 
 class IntervalPartition[K <: Interval, V: ClassTag]
-	(protected val iTree: IntervalTree[K, V]) extends Serializable with Logging {
+	(protected val iTree: IntervalTree[K, (K, V)]) extends Serializable with Logging {
 
   def this() {
-    this(new IntervalTree[K, V]())
+    this(new IntervalTree[K, (K, V)]())
   }
 
-  def getTree(): IntervalTree[K, V] = {
+  def getTree(): IntervalTree[K, (K, V)] = {
     iTree
   }
 
   protected def withMap
-      (map: IntervalTree[K, V]): IntervalPartition[K, V] = {
+      (map: IntervalTree[K, (K, V)]): IntervalPartition[K, V] = {
     new IntervalPartition(map)
   }
 
@@ -83,7 +81,7 @@ class IntervalPartition[K <: Interval, V: ClassTag]
   /**
    * Return a new IntervalPartition filtered by some predicate
    */
-  def filter(pred: V => Boolean): IntervalPartition[K, V] = {
+  def filter(pred: ((K, V)) => Boolean): IntervalPartition[K, V] = {
     new IntervalPartition(iTree.treeFilt(pred))
   }
 
@@ -91,8 +89,8 @@ class IntervalPartition[K <: Interval, V: ClassTag]
   /**
    * Applies a map function over the interval tree
    */
-  def mapValues[V2: ClassTag](f: V => V2): IntervalPartition[K, V2] = {
-    val retTree: IntervalTree[K, V2] = iTree.mapValues(f)
+  def mapValues[V2: ClassTag](f: ((K, V)) => (K, V2)): IntervalPartition[K, V2] = {
+    val retTree: IntervalTree[K, (K, V2)] = iTree.mapValues(f)
     new IntervalPartition(retTree) //What's the point of withMap
   }
 
@@ -139,20 +137,17 @@ private[intervalrdd] object IntervalPartition {
 		}
   }
 
-  def apply[K <: Interval, V: ClassTag]
+  //NOTE: IntervalTree is [K, (K, V)] to keep track of both materialized interval and record's interval
+  def apply[K <: Interval, K2 <: Interval, V: ClassTag]
       (iter: Iterator[(K, V)]): IntervalPartition[K, V] = {
-    val map = new IntervalTree[K, V]()
-    iter.foreach {
-      ku => {
-        map.insert(matInterval(ku._1), (ku._1, ku._2))
-      }
-    }
+    val map = new IntervalTree[K, (K, V)]()
+    iter.foreach{kv => map.insert(matInterval(kv._1), (kv._1, kv._2))}
     new IntervalPartition(map)
   }
 
   def apply[K <: Interval, V: ClassTag]
       (r: K, iter: Iterator[(K, V)]): IntervalPartition[K, V] = {
-    val map = new IntervalTree[K, V]()
+    val map = new IntervalTree[K, (K, V)]()
     map.insert(r, iter)
     new IntervalPartition(map)
   }
