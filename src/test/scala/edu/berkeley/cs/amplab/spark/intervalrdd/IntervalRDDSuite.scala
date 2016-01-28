@@ -92,7 +92,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
     var intRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD, sd)
     val results = intRDD.get(region3)
-    println(results)
+    // println(results)
 
     assert(results.head == (region3, rec3))
     assert(results.size == 1)
@@ -289,7 +289,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr3", 1000L)))
 
     var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
-    val filtRDD = testRDD.filter(elem => elem == "data1")
+    val filtRDD = testRDD.filter(elem => elem._2 == "data1")
     val results = filtRDD.get(overlapReg)
     // println(results.size)
     assert(results.size == 1)
@@ -310,7 +310,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr3", 1000L)))
 
     var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
-    val collected: Array[String] = testRDD.collect()
+    val collected: Array[(ReferenceRegion, String)] = testRDD.collect()
     // println(collected.size)
     // collected.foreach(println)
     assert(collected.size == 3)
@@ -349,9 +349,9 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr3", 1000L)))
 
     var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
-    var mapRDD = testRDD.mapValues(elem => elem + "YAY")
+    var mapRDD: IntervalRDD[ReferenceRegion, String] = testRDD.mapValues(elem => (elem._1, elem._2 + "YAY"))
     val results = mapRDD.get(overlapReg)
-    results.foreach(println)
+    // results.foreach(println)
     assert(results(0) == (region1, "data1YAY"))
 
 

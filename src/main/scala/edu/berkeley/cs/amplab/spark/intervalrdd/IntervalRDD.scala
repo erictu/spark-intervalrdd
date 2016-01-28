@@ -35,7 +35,7 @@ import com.github.akmorrow13.intervaltree._
 class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
     /** The underlying representation of the IndexedRDD as an RDD of partitions. */
     private val partitionsRDD: RDD[IntervalPartition[K, V]])
-  extends RDD[V](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) with Logging {
+  extends RDD[(K, V)](partitionsRDD.context, List(new OneToOneDependency(partitionsRDD))) with Logging {
 
   require(partitionsRDD.partitioner.isDefined)
 
@@ -44,8 +44,9 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
   override protected def getPartitions: Array[Partition] = partitionsRDD.partitions
 
   /** Provides the `RDD[(K, V)]` equivalent output. */
-  override def compute(part: Partition, context: TaskContext): Iterator[V] = {
-    // TODO
+  override def compute(part: Partition, context: TaskContext): Iterator[(K, V)] = {
+    // This needs to be present to compile
+    // TODO: Implement this later
     null
   }
 
@@ -65,7 +66,7 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
     partitionsRDD.map(_.getTree.size).reduce(_ + _)
   }
 
-  override def collect(): Array[V] = partitionsRDD.flatMap(r => r.get()).collect.map(_._2)
+  override def collect(): Array[(K, V)] = partitionsRDD.flatMap(r => r.get()).collect
 
 
   def filterByInterval(r: K): IntervalRDD[K, V] = {
@@ -76,18 +77,18 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
   /**
    * Performs filtering given a predicate
    */
-  override def filter(pred: V => Boolean): IntervalRDD[K, V] = {
+  override def filter(pred: ((K, V)) => Boolean): IntervalRDD[K, V] = {
     this.mapPartitionsGen(pred)
   }
 
    /**
     * Maps each value, preserving the index.
     */
-  def mapValues[V2: ClassTag](f: V => V2): IntervalRDD[K, V2] = {
-    this.mapFunction(f) //TODO: how to make this generalizable
+  def mapValues[V2: ClassTag](f: ((K, V)) => (K, V2)): IntervalRDD[K, V2] = {
+    this.mapFunction(f)
   }
 
-  def mapFunction[V2: ClassTag](f: V => V2): IntervalRDD[K, V2] = {
+  def mapFunction[V2: ClassTag](f: ((K, V)) => (K, V2)): IntervalRDD[K, V2] = {
     this.withPartitionsRDD[K, V2](partitionsRDD.mapPartitions({ iter =>
       if (iter.hasNext) {
         val p = iter.next()
@@ -101,7 +102,7 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
   /**
    * Applies a predicate to all partitions
    */
-  def mapPartitionsGen(pred: V => Boolean): IntervalRDD[K, V] = {
+  def mapPartitionsGen(pred: ((K, V)) => Boolean): IntervalRDD[K, V] = {
     this.withPartitionsRDD[K, V](partitionsRDD.mapPartitions({ iter =>
       if (iter.hasNext) {
         val p = iter.next()
@@ -134,7 +135,7 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
   * Assume that we're only getting data that exists (if it doesn't exist,
   * would have been handled by upper LazyMaterialization layer
   */
-  def get(region: K): List[(K, V)] = {
+  def get(region: K): List[(K,V)] = {
 
     val results: Array[Array[(K, V)]] = {
       context.runJob(partitionsRDD, (context: TaskContext, partIter: Iterator[IntervalPartition[K, V]]) => {
