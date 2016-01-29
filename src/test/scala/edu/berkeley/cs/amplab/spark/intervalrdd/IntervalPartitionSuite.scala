@@ -41,11 +41,14 @@ class IntervalPartitionSuite extends FunSuite  {
 	val read6 = 250L
 
 	test("create new partition") {
+
 		var partition: IntervalPartition[ReferenceRegion, Long] = new IntervalPartition[ReferenceRegion, Long]()
 		assert(partition != null)
+
 	}
 
 	test("create partition from iterator") {
+
 		val iter = Iterator((region1, read1), (region2, read1))
 		val partition = IntervalPartition(iter)
 		assert(partition != null)
@@ -63,7 +66,8 @@ class IntervalPartitionSuite extends FunSuite  {
 		assert(results.contains((region2, read2)))
 		assert(results.contains((region1, read3)))
 		assert(results.contains((region2, read4)))
-}
+
+	}
 
 	test("put some for iterator of intervals and key-values") {
 
@@ -93,6 +97,7 @@ class IntervalPartitionSuite extends FunSuite  {
 		val partition = IntervalPartition(iter)
 		var results = partition.get(region1).toList
 		assert(results.contains((region1, read1)))
+
 	}
 
 	test("selectively getting intervals") {
@@ -175,8 +180,6 @@ class IntervalPartitionSuite extends FunSuite  {
 		val filtPart = newPartition.mapValues(elem => (elem._1, elem._2 + 300L))
 
 		val results = filtPart.filter(elem => elem._2 < 400L).get
-		// println(results)
-		// println(results.size)
 		assert(results.size == 2)
 
 	}
