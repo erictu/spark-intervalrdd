@@ -73,7 +73,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
     val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = rdd.map(v => (region, v))
 
-    var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD, sd)
+    var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD)
     val results = intRDD.get(region)
 
     assert(results.size == rdd.count)
@@ -90,7 +90,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr2", 1000L),
       SequenceRecord("chr3", 1000L)))
 
-    var intRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD, sd)
+    var intRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD)
     val results = intRDD.get(region3)
     // println(results)
 
@@ -109,11 +109,11 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr2", 1000L),
       SequenceRecord("chr3", 1000L)))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD)
 
     intArr = Array((region2, rec4), (region3, rec5))
 
-    val newRDD: IntervalRDD[ReferenceRegion,  String] = testRDD.multiput(intArr, sd)
+    val newRDD: IntervalRDD[ReferenceRegion,  String] = testRDD.multiput(intArr)
     var results = newRDD.get(region3)
 
     assert(results.size == 2)
@@ -129,15 +129,15 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
     val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L)))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD)
 
     //constructing RDDs to put in
     val onePutInput = Array((region, rec4), (region, rec5))
     val twoPutInput = Array((region, rec6))
 
     // Call Put twice
-    val onePutRDD: IntervalRDD[ReferenceRegion,  String] = testRDD.multiput(onePutInput, sd)
-    val twoPutRDD: IntervalRDD[ReferenceRegion,  String] = onePutRDD.multiput(twoPutInput, sd)
+    val onePutRDD: IntervalRDD[ReferenceRegion,  String] = testRDD.multiput(onePutInput)
+    val twoPutRDD: IntervalRDD[ReferenceRegion,  String] = onePutRDD.multiput(twoPutInput)
 
     var resultsOrig = testRDD.get(region)
     var resultsOne = onePutRDD.get(region)
@@ -157,11 +157,11 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
     val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L),
       SequenceRecord("chr2", 1000L)))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD)
 
     val arr = Array((region2, rec4), (region2, rec5))
 
-    val chr2RDD: IntervalRDD[ReferenceRegion,  String] = testRDD.multiput(arr, sd)
+    val chr2RDD: IntervalRDD[ReferenceRegion,  String] = testRDD.multiput(arr)
 
     var origChr1 = testRDD.get(region1)
     var newChr1 = chr2RDD.get(region1)
@@ -187,7 +187,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
     val vRDD: RDD[Genotype] = sc.loadGenotypes(filePath).filterByOverlappingRegion(viewRegion)
     val variantRDD: RDD[(ReferenceRegion, Genotype)] = vRDD.keyBy(v => new ReferenceRegion(v.variant.contig.contigName, v.variant.start,v.variant.end))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  Genotype] = IntervalRDD(variantRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  Genotype] = IntervalRDD(variantRDD)
     val results = testRDD.get(viewRegion)
     assert(results.size == vRDD.count)
 
@@ -203,7 +203,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
     val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = rdd.map(v => (region, v))
 
-    var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD, sd)
+    var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD)
 
 
     assert(intRDD.count == rdd.count)
@@ -218,7 +218,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
     val sd = new SequenceDictionary(Vector(SequenceRecord("chr1", 1000L)))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(intArrRDD)
 
     val r: ReferenceRegion = new ReferenceRegion("chr1", 0L, 50L)
     val newRDD = testRDD.filterByInterval(r)
@@ -236,7 +236,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
     val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = rdd.map(v => (ReferenceRegion(v), v))
 
-    var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD, sd)
+    var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD)
 
     assert(intRDD.count == rdd.count)
 
@@ -250,7 +250,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr2", 1000L),
       SequenceRecord("chr3", 1000L)))
 
-    var intRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    var intRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD)
     assert(arrRDD.count == intRDD.count)
   }
 
@@ -262,7 +262,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr2", 1000L),
       SequenceRecord("chr3", 1000L)))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD)
 
     val results1 = testRDD.get(region1)
     assert(results1.size == 1)
@@ -288,7 +288,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr2", 1000L),
       SequenceRecord("chr3", 1000L)))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD)
     val filtRDD = testRDD.filter(elem => elem._2 == "data1")
     val results = filtRDD.get(overlapReg)
     // println(results.size)
@@ -309,7 +309,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr2", 1000L),
       SequenceRecord("chr3", 1000L)))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD)
     val collected: Array[(ReferenceRegion, String)] = testRDD.collect()
     // println(collected.size)
     // collected.foreach(println)
@@ -329,7 +329,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr2", 1000L),
       SequenceRecord("chr3", 1000L)))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD)
     // println(testRDD.count())
     assert(testRDD.count == 3)
 
@@ -348,7 +348,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr2", 1000L),
       SequenceRecord("chr3", 1000L)))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD)
     var mapRDD: IntervalRDD[ReferenceRegion, String] = testRDD.mapValues(elem => (elem._1, elem._2 + "YAY"))
     val results = mapRDD.get(overlapReg)
     // results.foreach(println)
