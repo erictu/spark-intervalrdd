@@ -50,6 +50,10 @@ class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
     null
   }
 
+  def toRDD(): RDD[(K, V)] = {
+    partitionsRDD.flatMap(_.get)
+  }
+
   /** Persists the edge partitions using `targetStorageLevel`, which defaults to MEMORY_ONLY. */
   override def persist(newLevel: StorageLevel): this.type = {
     partitionsRDD.persist(newLevel)
