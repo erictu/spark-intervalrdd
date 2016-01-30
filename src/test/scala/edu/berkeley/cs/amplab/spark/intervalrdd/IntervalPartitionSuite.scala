@@ -109,7 +109,6 @@ class IntervalPartitionSuite extends FunSuite  {
 
 		// assert values are in the new partition
 		var results: List[(ReferenceRegion, Long)] = newPartition.get(region1).toList
-		// results = results ++ newPartition.get(region2).toList
 
 		assert(results.contains((region1, read1)))
 		assert(!results.contains((region2, read2)))
@@ -151,7 +150,7 @@ class IntervalPartitionSuite extends FunSuite  {
 		val overlapReg: ReferenceRegion = new ReferenceRegion(chr, 0L, 200L)
 
 		val results = newPartition.get(overlapReg).toList
-	  	assert(results.size == 5)
+		assert(results.size == 5)
 
 	}
 

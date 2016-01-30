@@ -31,6 +31,7 @@ import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite
 import org.scalatest.Matchers
+import org.bdgenomics.adam.rdd.GenomicRegionPartitioner
 import org.bdgenomics.adam.models.{ ReferenceRegion, SequenceRecord, SequenceDictionary, ReferencePosition }
 import org.bdgenomics.utils.instrumentation.Metrics
 import org.bdgenomics.utils.instrumentation.{RecordedMetrics, MetricsListener}
@@ -62,22 +63,38 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
   val rec5 = "data5"
   val rec6 = "data6"
 
+  sparkTest("Filter and count alignment data over 100 bases") {
+
+    val filePath = "./mouse_chrM.bam"
+    val region = new ReferenceRegion("chrM", 0L, 1000L)
+    val interval = new ReferenceRegion("chrM", 0L, 100L)
+
+    val sd = sc.adamDictionaryLoad[AlignmentRecord](filePath)
+    val rdd: RDD[AlignmentRecord] = sc.loadIndexedBam(filePath, region)
+
+    val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = rdd.map(v => (ReferenceRegion(v), v)).partitionBy(GenomicRegionPartitioner(10, sd))
+
+    var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD)
+    val filteredRDD = alignmentRDD.filter( r => (r._2.start <= interval.end && r._2.end >= interval.start) )
+    val results = intRDD.filterByInterval(interval)
+    assert(results.count == filteredRDD.count)
+  }
+
   sparkTest("Get alignment data over 1000 bases") {
 
-    val filePath = "./mouse_chrM_p1.bam"
-    val region = new ReferenceRegion("chrM", 0L, 1000L)
+    val filePath = "./mouse_chrM.bam"
+    val region = new ReferenceRegion("chrM", 0L, 10000L)
     val interval = new ReferenceRegion("chrM", 0L, 1000L)
 
     val sd = sc.adamDictionaryLoad[AlignmentRecord](filePath)
     val rdd: RDD[AlignmentRecord] = sc.loadIndexedBam(filePath, region)
 
-    val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = rdd.map(v => (region, v))
+    val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = rdd.map(v => (ReferenceRegion(v), v)).partitionBy(GenomicRegionPartitioner(10, sd))
 
     var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD)
     val results = intRDD.get(region)
 
     assert(results.size == rdd.count)
-
   }
 
   sparkTest("create IntervalRDD from RDD of datatype string") {
@@ -194,7 +211,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
   sparkTest("test count function") {
 
-    val filePath = "./mouse_chrM_p1.bam"
+    val filePath = "./mouse_chrM.bam"
     val region = new ReferenceRegion("chrM", 0L, 1000L)
 
     val sd = sc.adamDictionaryLoad[AlignmentRecord](filePath)
@@ -227,7 +244,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
 
   sparkTest("test explicit setting of number of partitions") {
-    val filePath = "./mouse_chrM_p1.bam"
+    val filePath = "./mouse_chrM.bam"
     val region = new ReferenceRegion("chrM", 0L, 20000L)
 
     val sd = sc.adamDictionaryLoad[AlignmentRecord](filePath)
@@ -317,7 +334,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr2", 1000L),
       SequenceRecord("chr3", 1000L)))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD)
     var backToRDD: RDD[(ReferenceRegion, String)] = testRDD.toRDD
     assert(backToRDD.collect.size == 3)
 
@@ -347,11 +364,10 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
       SequenceRecord("chr2", 1000L),
       SequenceRecord("chr3", 1000L)))
 
-    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD, sd)
+    var testRDD: IntervalRDD[ReferenceRegion,  String] = IntervalRDD(arrRDD)
     var mapRDD: IntervalRDD[ReferenceRegion, String] = testRDD.mapValues(elem => (elem._1, elem._2 + "_mapped"))
     val results = mapRDD.get(overlapReg)
     assert(results(0) == (region1, "data1_mapped"))
-
   }
 
 }

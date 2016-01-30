@@ -60,7 +60,7 @@ class IntervalPartition[K <: Interval, V: ClassTag]
    * Helper function for overlap of intervals
    */
   def intervalOverlap(r1: K, r2: K): Boolean = {
-    r1.start <= r2.end && r1.end >= r2.start
+		r1.start < r2.end && r1.end > r2.start
   }
 
 
