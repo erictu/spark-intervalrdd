@@ -2,7 +2,7 @@ name := "spark-intervalrdd"
 
 version := "0.1-SNAPSHOT"
 
-organization := "edu.berkeley.cs.amplab"
+organization := "com.github.erictu"
 
 scalaVersion := "2.10.4"
 
