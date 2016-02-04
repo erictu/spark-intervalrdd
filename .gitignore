@@ -1,6 +1,6 @@
 project/target/
 target/
 bin/
+*.DS_Store
 .DS_Store
-adam.log
-mouse*
+*.log

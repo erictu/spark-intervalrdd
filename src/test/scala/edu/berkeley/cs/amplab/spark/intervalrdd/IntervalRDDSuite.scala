@@ -65,7 +65,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
   sparkTest("Filter and count alignment data over 100 bases") {
 
-    val filePath = "./mouse_chrM.bam"
+    val filePath = "src/test/resources/mouse_chrM.bam"
     val region = new ReferenceRegion("chrM", 0L, 1000L)
     val interval = new ReferenceRegion("chrM", 0L, 100L)
 
@@ -82,7 +82,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
   sparkTest("Get alignment data over 1000 bases") {
 
-    val filePath = "./mouse_chrM.bam"
+    val filePath = "src/test/resources/mouse_chrM.bam"
     val region = new ReferenceRegion("chrM", 0L, 10000L)
     val interval = new ReferenceRegion("chrM", 0L, 1000L)
 
@@ -191,7 +191,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
   sparkTest("test for vcf data") {
 
-    val filePath = "./6-sample.vcf"
+    val filePath = "src/test/resources/6-sample.vcf"
 
     val sd = new SequenceDictionary(Vector(SequenceRecord("6", 1999999L)))
 
@@ -211,7 +211,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
   sparkTest("test count function") {
 
-    val filePath = "./mouse_chrM.bam"
+    val filePath = "src/test/resources/mouse_chrM.bam"
     val region = new ReferenceRegion("chrM", 0L, 1000L)
 
     val sd = sc.adamDictionaryLoad[AlignmentRecord](filePath)
@@ -244,7 +244,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
 
 
   sparkTest("test explicit setting of number of partitions") {
-    val filePath = "./mouse_chrM.bam"
+    val filePath = "src/test/resources/mouse_chrM.bam"
     val region = new ReferenceRegion("chrM", 0L, 20000L)
 
     val sd = sc.adamDictionaryLoad[AlignmentRecord](filePath)
