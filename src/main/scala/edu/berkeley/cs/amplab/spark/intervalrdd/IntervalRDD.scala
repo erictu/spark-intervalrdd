@@ -30,7 +30,7 @@ import org.bdgenomics.adam.rdd.GenomicPositionPartitioner
 import org.bdgenomics.utils.instrumentation.Metrics
 import scala.collection.mutable.ListBuffer
 import scala.collection.Map
-import com.github.akmorrow13.intervaltree._
+import com.github.erictu.intervaltree._
 
 class IntervalRDD[K<: Interval: ClassTag, V: ClassTag](
     /** The underlying representation of the IndexedRDD as an RDD of partitions. */

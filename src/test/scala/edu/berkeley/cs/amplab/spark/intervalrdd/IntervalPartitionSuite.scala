@@ -18,7 +18,7 @@ F* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 package edu.berkeley.cs.amplab.spark.intervalrdd
 
 import org.bdgenomics.adam.models.ReferenceRegion
-import com.github.akmorrow13.intervaltree._
+import com.github.erictu.intervaltree._
 import org.scalatest._
 import org.apache.spark.rdd.RDD
 import org.scalatest.FunSuite

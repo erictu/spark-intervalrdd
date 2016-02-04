@@ -24,7 +24,7 @@ import org.apache.parquet.filter2.dsl.Dsl._
 
 import org.bdgenomics.adam.projections.{ Projection, GenotypeField }
 import org.apache.parquet.filter2.predicate.FilterPredicate
-import com.github.akmorrow13.intervaltree._
+import com.github.erictu.intervaltree._
 import org.scalatest._
 import org.apache.spark.{ SparkConf, Logging, SparkContext }
 import org.apache.spark.TaskContext
@@ -75,7 +75,7 @@ class IntervalRDDSuite extends ADAMFunSuite with Logging {
     val alignmentRDD: RDD[(ReferenceRegion, AlignmentRecord)] = rdd.map(v => (ReferenceRegion(v), v)).partitionBy(GenomicRegionPartitioner(10, sd))
 
     var intRDD: IntervalRDD[ReferenceRegion,  AlignmentRecord] = IntervalRDD(alignmentRDD)
-    val filteredRDD = alignmentRDD.filter( r => (r._2.start <= interval.end && r._2.end >= interval.start) )
+    val filteredRDD = alignmentRDD.filter( r => (r._2.start < interval.end && r._2.end > interval.start) )
     val results = intRDD.filterByInterval(interval)
     assert(results.count == filteredRDD.count)
   }
