@@ -27,7 +27,7 @@ import org.apache.spark.storage.StorageLevel
 import scala.collection.mutable.ListBuffer
 
 import edu.berkeley.cs.amplab.spark.intervalrdd._
-import com.github.akmorrow13.intervaltree._
+import com.github.erictu.intervaltree._
 import org.apache.spark.Logging
 import org.bdgenomics.adam.models.{ Interval, ReferenceRegion }
 
